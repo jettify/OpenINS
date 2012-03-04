@@ -1,0 +1,16 @@
+# .gitignore
+# OpenINS project
+*.pyc
+/info
+*.swp
+*.m~
+*.py~
+*.rst~
+*.dat
+
+#Eclipse files
+.metadata
+.project
+.pydevproject
+.settings
+.idea
