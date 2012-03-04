@@ -7,7 +7,7 @@
 *.py~
 *.rst~
 *.dat
-
+*~
 #Eclipse files
 .metadata
 .project
