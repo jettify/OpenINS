@@ -1,9 +1,7 @@
 #!/usr/bin/python
-'''
-Created on Dec 11, 2011
-
-@author: nickolai
-'''
+"""
+Functions for analysis of sensors stochastic model.
+"""
 
 import unittest
 
