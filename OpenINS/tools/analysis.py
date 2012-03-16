@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # coding=utf8
 
 """
@@ -100,7 +101,7 @@ def plot_avar(sigma, time):
     pylab.ylabel('$\sigma(\\tau)$')
     pylab.title('Allan deviation')
     pylab.grid(True)
-    #pylab.show()
+    pylab.show()
 
 
 def psd(data, dt=0.005, NFFT=512, plot=1):
