@@ -1,94 +1,92 @@
+"""
+Function to create set of turns for platform.
+"""
+
 import numpy as np
 import pylab
-
-# TODO, DIRTY HACK ###################################
-#import sys
-#sys.path.insert(0, "/home/nickolai/OpenINS2/OpenINS/")
-######################################################
-
-
+from visualisation.plotter import plot_trinity
 from orientationmath.orientation import euler2quat
 
-def create_profile(dt, pf, init):
+def create_profile(dtime, pfl, init):
     """
     Creates ideal rotation of 3-axis table
-    pf[:,0]: time in sec
-    pf[:,1]: wx, angular speed
-    pf[:,2]: init angle x, 
-    pf[:,3]: wy, angular speed
-    pf[:,4]: init angle y, 
-    pf[:,5]: wz, angular speed
-    pf[:,6]: init angle z, 
+    pfl[:,0]: time in sec
+    pfl[:,1]: wx, angular speed
+    pfl[:,2]: init angle x, 
+    pfl[:,3]: wy, angular speed
+    pfl[:,4]: init angle y, 
+    pfl[:,5]: wz, angular speed
+    pfl[:,6]: init angle z, 
     """
 
-    pf[:,2] += init[0]
-    pf[:,4] += init[0]
-    pf[:,6] += init[0]
+    pfl[:, 2] += init[0]
+    pfl[:, 4] += init[0]
+    pfl[:, 6] += init[0]
 
 
-    init_quat = euler2quat(init[0],init[1], init[2])
+    init_quat = euler2quat(init[0], init[1], init[2])
+    #print 'init_quat = ', init_quat
+    (row, col) = np.shape(pfl)
+
+    time = np.arange(0, np.sum(pfl[:, 0]), dtime)
     
-    print 'init_quat = ', init_quat
 
-    (row, col) = np.shape(pf)
-
-    time = np.arange(0, np.sum(pf[:,0]),dt)
-
-    #print 'time = ', time
     euler = np.zeros(row)
     w = np.zeros(row)
 
 
     for i in range(0, row):
 
-        wx, roll = rotate(dt, pf[i, 0],  pf[i, 1], pf[i, 2])
-        wy, pitch = rotate(dt, pf[i, 0],  pf[i, 1+2], pf[i, 2+2])
-        wz, yaw = rotate(dt, pf[i, 0],  pf[i, 1+4], pf[i, 2+4])
+        wx, roll = rotate(dt, pfl[i, 0],  pfl[i, 1], pfl[i, 2])
+        wy, pitch = rotate(dt, pfl[i, 0],  pfl[i, 1+2], pfl[i, 2+2])
+        wz, yaw = rotate(dt, pfl[i, 0],  pfl[i, 1+4], pfl[i, 2+4])
+        wy, pitch = rotate(dt, pfl[i, 0],  pfl[i, 1+2], pfl[i, 2+2])
 
         if i == 0.:
             euler = np.array([roll, pitch, yaw])
             w = np.array([wx, wy, wz])
         else:
-            euler = np.append(euler, np.array([roll, pitch, yaw]),axis=1)
+            euler = np.append(euler, np.array([roll, pitch, yaw]), axis=1)
             w = np.append(w, np.array([wx, wy, wz]), axis=1)
 
     return time, w, euler
 
-def rotate(dt, time, rate, angle):
+def rotate(dtime, time, rate, angle):
     """
     Form angular movement of given axis
     """
-    angle = np.arange(0, time, dt) * rate + angle
-    rate =  np.ones(len(np.arange(0, time, dt))) * rate
+    angle = np.arange(0, time, dtime) * rate + angle
+    rate =  np.ones(len(np.arange(0, time, dtime))) * rate
 
     return rate, angle
 
-def plot_profile(time, angle):
+def stady():
     """
-    Plot profile versus time.
+    INS stationary state. 
+    """
 
-    Parameters
-    ----------
-    time: array, seconds
-    angle: array, rad
+class FuncConstructor(object):
     """
-    pylab.plot(time, angle)
-    pylab.xlabel('$time (s)$')
-    pylab.ylabel('$\sigma(\\tau)$')
-    pylab.title('Allan deviation')
-    #pylab.legend('a_x','a_y','a_z')
-    pylab.grid(True)
-    pylab.show()
- 
+    Construct nonlinear time dependent functions.
+    """
+    def __init__(self):
+        """
+        Init useful vars.
+        """
+         
+
+
+
+
 
 if __name__ == '__main__':
 
-    pf = np.array([[10., 0,      0,     0, 0,  0, 0],
+    pfl = np.array([[10., 0,      0,     0, 0,  0, 0],
                    [20., np.pi/20., 0,  0, 0,  0, 0],
                    [10., 0,     np.pi,  0, 0,  0, 0]])
 
 
-    pf = np.array([[10, 0,        0,        0, 0,  0,     0],
+    pfl = np.array([[10, 0,        0,        0, 0,  0,     0],
                    [20, np.pi/20, 0,        0, 0,  0,     0],
                    [10, 0,        np.pi,    0, 0,  0,     0],
                    [20, np.pi/20, np.pi,    0, 0,  0,     0],
@@ -105,17 +103,17 @@ if __name__ == '__main__':
     base2 = np.array([-np.pi/2., -np.pi/2., 0.])
     base3 = np.array([np.pi/2., 0, np.pi/2.]) 
     
-    time1, rate1, angle1 = create_profile(dt,pf,base1)
-    time2, rate2, angle2 = create_profile(dt,pf,base2)
-    time3, rate3, angle3 = create_profile(dt,pf,base3)
+    (time1, rate1, angle1) = create_profile(dt, pfl, base1)
+    (time2, rate2, angle2) = create_profile(dt, pfl, base2)
+    (time3, rate3, angle3) = create_profile(dt, pfl, base3)
 
     print 'lent time = ', len(time1)
     print 'len angle = ', np.shape(angle1)
     print 'len wx = ', np.shape(rate1)
     
-    plot_profile(time1, angle1.T)
-    plot_profile(time2, angle2.T)
-    plot_profile(time3, angle3.T)
+    plot_trinity(time1, angle1.T)
+    plot_trinity(time2, angle2.T)
+    plot_trinity(time3, angle3.T)
 
 
 
