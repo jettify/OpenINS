@@ -58,7 +58,7 @@ def plot_trajectory(phi, lam, height):
     
     plt.show()  
 
-def plot_euler(time, roll, yaw, pitch):
+def plot_euler(time, roll, pitch, yaw):
     """
     Plot Euler angles.
 
