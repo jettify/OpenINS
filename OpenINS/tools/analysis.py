@@ -41,9 +41,7 @@ def avar(data, dt=0.05, ppd=10, plot=1):
         Format Guide and Test Procedure for Single-Axis. Laser Gyros
     [2] http://instk.org/blog/?p=64
     [3] http://instk.org/
-    [4] C.C.M. NARANJO, “Analysis and Modeling of MEMS based
-        Inertial Sensors” (n.d.).
-    [5] http://tf.nist.gov/timefreq/general/pdf/2220.pdf
+    [4] http://tf.nist.gov/timefreq/general/pdf/2220.pdf
     """
 
     ## Total number of samples
