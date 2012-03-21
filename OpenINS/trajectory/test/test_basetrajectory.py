@@ -6,7 +6,6 @@ from trajectory.basetrajectory import RotationSequence
 from trajectory.basetrajectory import BasicCalibTraj
 
 from visualisation.plotter import plot_trinity
-
 class RotateIMUTest(unittest.TestCase):
     """
     Unit test for DCM matrix module
@@ -57,6 +56,8 @@ class RotationSequenceTest(unittest.TestCase):
         self.rot_5 = RotateIMU(self.stady_time, 0., 0., 0.)
         self.rot_6 = RotateIMU(self.turn_time, 0., 0., np.pi)
         self.rot_7 = RotateIMU(self.stady_time, 0., 0., 0.)
+
+
 
         self.rs = RotationSequence()
         self.rs.add(self.rot_1) 

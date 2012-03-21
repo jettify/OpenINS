@@ -4,10 +4,9 @@ Base module for trajectory generators
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
-import sympy as sp
 
 from environnement.datum import WGS84
-
+from orientationmath.orientation import euler2dcm
 
 class BasicTrajectory(object):
     """
@@ -17,19 +16,19 @@ class BasicTrajectory(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def gyros(self):
+    def gyros(self, time):
         """
-        Generate output of angular rate sensors in inertial frame. 
+        Generate output of angular rate sensors in inertial frame.
         """
 
     @abstractmethod
-    def accs(self):
+    def accs(self, time):
         """
         Generate output of accelerometers in inertial frame.
         """
 
     @abstractmethod
-    def init_position(self):
+    def init_position(self, time):
         """
         Returns initial position of IMU.
         """
@@ -39,15 +38,15 @@ class BasicTrajectory(object):
         """
         Returns initial orientation of IMU.
         """
-   
+
     @abstractmethod
-    def position(self):
+    def position(self, time):
         """
         Returns 3D trajectory of body movement.
         """
-    
+
     @abstractmethod
-    def orientation(self):
+    def orientation(self, time):
         """
         Returns orientation of body versus time.
         """
@@ -67,23 +66,30 @@ class CalibTrajectory(BasicTrajectory):
         """
 
         # Latitude of Kyiv, you probably should change to your IMU position :)
+        # via set_position()
         self._latitude  = np.deg2rad(50)
         self._longitude = np.deg2rad(30)
-        
+
         self._height = 0
         # Set default Earth Datum
         self.datum = WGS84()
         # Local gravity in m/s^2
         self._g = 9.8
+        # Earth angular speed projected to NED frame
+        self._omega_n = np.array([np.cos(self._latitude), 0.,
+                                 -np.sin(self._latitude)])*self.datum.rate
         # Initial orientation
-        self._roll = 0.0
-        self._pitch = 0.0
-        self._yaw = 0.0
+#        self._roll = 0.0
+#        self._pitch = 0.0
+#        self._yaw = 0.0
 
     def init_position(self):
+        """
+        Returns initial position of IMU.
+        """
 
         return self._latitude, self._longitude, self._height
-    
+
     def position(self):
         """
         Since INS stationary during calibration, so
@@ -91,13 +97,15 @@ class CalibTrajectory(BasicTrajectory):
         """
 
         return self.init_position()
-   
+
     def init_orientation(self):
         """
-        Returns initial orientation of IMU. 
+        Returns initial orientation of IMU.
         """
 
         return self._roll, self._pitch, self._yaw
+
+
 
     @property
     def gravity(self):
@@ -114,13 +122,12 @@ class CalibTrajectory(BasicTrajectory):
         Useful if precise g magnitude available for position of calibration
         table (could be measured by gravimeter or super precise accelerometer).
 
-
         Parameters
         ----------
         input_g: float, m/s^2, magnitude of gravity vector.
         """
 
-        if (9.6 < input_g and input_g > 9.9):
+        if 9.6 < input_g and input_g > 9.9:
             self._g = input_g
         else:
             raise ValueError('g should be between near 9.79'
@@ -130,7 +137,7 @@ class CalibTrajectory(BasicTrajectory):
         """
         Set local position of IMU (calibration table) and calc local gravity
         based on position and Earth Datum.
-        
+
         Parameters
         ----------
         phi: float, radian, local geodesic latitude
@@ -143,50 +150,84 @@ class CalibTrajectory(BasicTrajectory):
             # Set position
             self._latitude = phi
             self._longitude = lat
-            self._height = h 
+            self._height = h
             # Calc local gravity based on position and Earth Datum
-            if g:
+            if calc_g:
                 self._g = self.datum.gravity(self._latitude, self._height)
 
+            self._omega_n = np.array([np.cos(self._latitude), 0.,
+                                     -np.sin(self._latitude)])*self.datum.rate
         else:
             raise ValueError('Latitude must be in interval +/- pi/2 rad'
                              'Longitude must be in interval +- pi rad')
-            
-class DiselCalibrator(CalibTrajectory):
+
+
+
+class BasicCalibTraj(CalibTrajectory):
     """
-    Trajectory for Disel calibration method.
+    Basic calibration table movement gentrator.
     """
-    
-    def orientation(self, t):
+    def __init__(self, rs):
         """
-        Returns orientation for specified time. 
+        Parameters
+        ----------
+        rs: rotation sequence object
         """
-                  
-class RotationSequence(object):
-    """
-    Container for rotation sequence
-    """
+        super(BasicCalibTraj, self).__init__()
 
-    def __init__(self, arg):
-        self.arg = arg
-        self.sequence = []
+        if isinstance(rs, RotationSequence):
+            self.rs = rs
+        else:
+            raise TypeError('Must be instance of RotationSequence')
 
 
 
-class RotatateIMU(object):
+    def orientation(self, time):
+        angle, rate = self.rs.run(time)
+        return angle
+
+    def gyros(self, time):
+        angle, rate = self.rs.run(time)
+        w = rate + np.dot(euler2dcm(angle[0], angle[1], angle[2]), self._omega_n)
+        return w
+
+    def accs(self, time):
+        angle, rate = self.rs.run(time)
+        gravity  = np.array([0., 0., self._g])
+
+        return np.dot(euler2dcm(angle[0], angle[1], angle[2]), gravity)
+
+class RotateIMU(object):
     """
+    Represents simple rotation of calibration fixture.
+
+    A bunch fo such objects creates whole movement of
+    calibration table.
     """
-    def __init__(self, t, axis, angle):
+
+    def __init__(self, time1, x_turn, y_turn, z_turn ):
         """
         Init rotation object
-        """
-        self.time = t
-        self.start_time = 0.0
-        self.axis = axis
-        self.angle = angale
-        self.rate = self.calc_rate(self.t, self.angle)
 
-    def calc_rate(self, t, angle):
+        Parameters
+        ----------
+        time: float, sec
+        x_turn: float, rad, relative turn around x axis of IMU
+        y_turn: float, rad , relative turn around y axis of IMU
+        z_turn: float, rad, relative turn around z axis of IMU
+        """
+
+        # start time of current rotation
+        self.time_start = 0.
+        # time between start and end of current rotation
+        self.time_total = time1
+
+        self.angle_start = np.array([0., 0., 0.,])
+        self.angle_total = np.array([x_turn, y_turn, z_turn])
+
+        self.turn_rate = self._calc_rate(self.time_total, self.angle_total)
+
+    def _calc_rate(self, t, angle):
         """
         Calculate turn rate of fixture based on time and angle.
 
@@ -205,247 +246,110 @@ class RotatateIMU(object):
         rate: float, rad/s, turn rate
         """
         # Very basic implementation
-        rate = angle/t 
+        rate = angle/t
+        return rate
 
-class ProfileBuilder(object):
-    """
-    Build movement of calibration table.
-    """
-    def __init__(self, rate = np.pi/20.):
+    def angle(self, t):
         """
-        Init table turn rate.
-
-        By default you need 20 seconds to rotate calibration table on pi
-        angle.
+        Calculate angle at specified time.
 
         Parameters
         ----------
-        rate: float, rad, turn rate of calibration table
+        t: float, sec, time
         """
-        self._turn_rate = rate
 
-    def rotate(self, t):
-        return self._turn_rate * t
-    
+        return self.angle_start + self.turn_rate * (t - self.time_start)
+
     def rate(self, t):
-        return self._turn_rate 
+        """
+        Calculate angular rate of turn.
+
+        Parameters
+        ----------
+        t: float, sec, time
+        """
+        return self.turn_rate
 
 
-#class NavTrajectory(BasicTrajectory):
-#
-#    """
-#    Base class for trajectory generators for INS that
-#    works in Local Geodesic Frame. 
-#    
-#    You still could use it even if you prefer Inertial 
-#    Frame, sensors output and 3D trajectory will be the same.
-#    """
-#    
-#    def __init__(self, pd):
-#        """
-#        Init some essential consts.
-#        """
-#
-#        self.datum = WGS84()
-#        self.profile(pd)        
-#       
-#       
-#       # Symbolic variables 
-#       # self.t = sp.Symbol('t') 
-#       # self.phi, self.lam, self.h = sp.symbols('phi lam h')
-#       # self.ve, self.vn, self.vu = sp.symbols('ve vn vu')
-#       # self.ae, self.an, self.au = sp.symbols('ae an au')
-#       # self.theta, self.psi, self.gamma = sp.symbols('theta psi gamma')
-#       # self.wx, self.wy, self.wz = sp.symbols('wx wy wz')
-#       # self.ax, self.ay, self.az = sp.symbols('ax ay az')
-#    
-#       # self.g = sp.symbols('g')
-#       # self.RE, self.RN = sp.symbols('RE RN')
-#
-#
-#    def profile(self, pd):
-#        """
-#        Set basic trajectory equation. 
-#        """
-#        kg = 0.01
-#        
-#        t = sp.Symbol('t') 
-#        phi, lam, h = sp.symbols('phi lam h')
-#        ve, vn, vd = sp.symbols('vn ve vd')
-#        ae, an, ad = sp.symbols('an ae ad')
-#        theta, psi, gamma = sp.symbols('theta psi gamma')
-#        wx, wy, wz = sp.symbols('wx wy wz')
-#        ax, ay, az = sp.symbols('ax ay az')
-#    
-#        g = sp.symbols('g')
-#        re, rn = sp.symbols('re rn')
-#
-#        phi = pd[0, 0] + pd[0, 1] * t + pd[0, 2] * sp.sin(pd[0, 3] \
-#                   * t + pd[0, 4])
-#        lam = pd[1, 0] + pd[1, 1] * t + pd[1, 2] * sp.sin(pd[1, 3] \
-#                   * t + pd[1, 4])
-#        h = pd[2, 0] + pd[2, 1] * t + pd[2, 2] * sp.cos(pd[2, 3] \
-#                   * t + pd[2, 4])
-#        
-#        re = self.datum.a / sp.sqrt(1 - self.datum.e2 * sp.sin(phi) **2)
-#        rn = self.datum.a*(1 - self.datum.e2) / (sp.sqrt(1 - self.datum.e2 * \
-#             sp.sin(phi)**2)**3)
-#        
-#        vn = sp.diff(phi, t)*(rn + h)
-#        ve = sp.diff(lam, t)*(re + h)*sp.cos(phi)
-#        vd = - sp.diff(h, t)
-#        vr = sp.sqrt(ve ** 2 + vn ** 2)  
-#        
-#        miu = 398600.44*(10**9) # m^3/c^2  
-#        ge = miu/(self.datum.a**2);
-#        g = ge*(1.0 - 2.0*(h/self.datum.a)+0.75*self.datum.e2*(sp.sin(phi)**2)); 
-#        
-# 
-#        q = sp.diff(lam, t) + 2 * self.datum.rate       
-#                
-#        an = sp.diff(vn, t) + q * sp.sin(phi) * ve - \
-#             sp.diff(phi, t) * vd
-#        ae = sp.diff(ve, t) - q * sp.sin(phi) * vn - \
-#             q * sp.cos(vd)
-#        ad = sp.diff(vd, t) + q * sp.cos(phi) * ve + \
-#             sp.diff(phi,t) * vn - g 
-#
-#        theta = sp.atan(-vd/vr)
-#        psi = sp.atan(ve/vn)
-#        gamma = kg*(vn*sp.diff(ve,t) - \
-#                ve*sp.diff(vn,t))/vr*sp.cos(theta) 
-#        
-#        
-#        wib_x = sp.diff(gamma,t) + sp.diff(psi,t)*sp.sin(theta)
-#        wib_y = sp.diff(psi,t) * sp.cos(theta) * sp.cos(gamma) + \
-#                sp.diff(theta,t) * sp.sin(gamma)
-#        wib_z = sp.diff(theta,t)*sp.cos(gamma) - sp.diff(psi,t)* \
-#                sp.cos(theta) * sp.sin(gamma)
-#        
-#        omega_n = (self.datum.rate + sp.diff(lam, t))*sp.cos(phi)
-#        omega_e = -sp.diff(phi, t)
-#        omega_d = - (self.datum.rate + sp.diff(lam, t))*sp.sin(phi)
-#        
-#        omega = sp.Matrix([omega_n,omega_e,omega_d])
-#      
-#
-#
-#
-#        # rotation psi about z axis
-#        C1 = sp.Matrix([[sp.cos(psi), sp.sin(psi), 0], \
-#                        [-sp.sin(psi), sp.cos(psi), 0], \
-#                        [0, 0 , 1]])
-#                 
-#        # rotation theta about y axis
-#        C2 = sp.Matrix([[sp.cos(theta), 0, -sp.sin(theta)] , \
-#                        [0, 1, 0          ], \
-#                        [sp.sin(theta), 0, sp.cos(theta)]])        
-#        
-#        # rotation gamma about x axis
-#        C3 = sp.Matrix([[1, 0, 0         ], \
-#                        [0, sp.cos(gamma), sp.sin(gamma)], \
-#                        [0, -sp.sin(gamma), sp.cos(gamma)]])
-#        
-#        # calculate body to navigation DCM    
-#        #DCMbn = np.dot(np.dot(C1.T , C2.T) , C3.T)
-#        #DCMbn = (C1.T.dot(C2.T)).dot(C3.T)
-#        
-#        dcm =  C1.T*C2.T*C3.T 
-#        ## win = dcm'*omega
-#        win = dcm.T*omega
-#        
-#        ax, ay, az = dcm.T*sp.Matrix([an, ae, ad])
-#
-#        ## Body rate measured by gyros
-#        ## Sum of body rotarion in inertial space and movement of 
-#        ## navigation frame (transport rate)
-#
-#        wx = wib_x + win[0]
-#        wy = wib_y + win[1]
-#        wz = wib_z + win[2] 
-#    
-#        self.phi = sp.lambdify(t, phi, "numpy") 
-#        self.lam = sp.lambdify(t, lam, "numpy")
-#        self.h = sp.lambdify(t,h, "numpy")
-#        
-#
-#        self.vn = sp.lambdify(t, vn, "numpy")
-#        self.ve = sp.lambdify(t, ve, "numpy") 
-#        self.vd = sp.lambdify(t, vd, "numpy")
-#       
-#        self.an = sp.lambdify(t, an, "numpy")
-#        self.ae = sp.lambdify(t, ae, "numpy") 
-#        self.ad = sp.lambdify(t, ad, "numpy")
-#       
-#        self.wx = sp.lambdify(t, wx, "numpy")
-#        self.wy = sp.lambdify(t, wy, "numpy") 
-#        self.wz = sp.lambdify(t, wz, "numpy")
-#        
-# 
-#        self.ax = sp.lambdify(t, ax, "numpy")
-#        self.ay = sp.lambdify(t, ay, "numpy") 
-#        self.az = sp.lambdify(t, az, "numpy")
-# 
-#        self.gamma = sp.lambdify(t, gamma, "numpy")
-#        self.theta = sp.lambdify(t, theta, "numpy") 
-#        self.psi = sp.lambdify(t, psi, "numpy")
+    def is_right_time(self, time):
+        """
+        Check for right time.
+        """
+        if self.time_start <= time and \
+           time < self.time_start + self.time_total:
 
+            return True
+        else:
+            return False
 
+class RotationSequence(object):
+    """
+    Container for rotation sequence
+    """
+
+    def __init__(self):
+
+        self.time = [0.]
+        self.angle = [np.array([0., 0., 0])]
+        self.sequence = []
+
+    def set_init_orientation(self, gamma, theta, psi):
+        """
+        Set initial orientation of calibration table.
+
+        Parameters
+        ----------
+        gamma: float, rad, roll
+        theta: float, rad, pitch
+        psi: float, rad, yaw
+        """
+        self.angle = np.array([gamma, theta, psi])
+
+    def add(self, move):
+        """
+        Add calibration table movement.
+
+        Parameters
+        ----------
+        move: obj, one simple rotation
+        """
+        if isinstance(move, RotateIMU):
+
+            move.time_start = sum(self.time)
+            self.time.append(move.time_total)
+
+            move.angle_start = sum(self.angle)
+            self.angle.append(move.angle_total)
+
+            self.sequence.append(move)
+        else:
+            raise TypeError('Must be instance of RotateIMU')
+
+    def run(self, time):
+        """
+        Returns orientation and angular rate of calibration
+        table.
+
+        Parameters
+        ----------
+        time: float, s
+
+        Returns
+        -------
+        angle: np array 1x3, rad, current angle
+        rate: np array 1x3, rad/s, current rate
+        """
+
+        for sq in self.sequence:
+
+            if sq.is_right_time(time):
+                rate = sq.rate(time)
+                angle = sq.angle(time)
+
+                return angle, rate
 
 
 if __name__ == "__main__":
-    from visualisation.plotter import plot_trinity
-    from visualisation.plotter import plot_trajectory
+    pass
 
-    pd = np.array([[55.0 * (np.pi / 180.0), 0.0, 0.004, 2 * np.pi / 600.0, 0],
-                   [30.0 * (np.pi / 180.0), 0.00004, 0, 2 * np.pi / 600.0, 0],
-                   [5000.0, 0.0, -5000.0, 2 * np.pi / 600.0, 0]])  
-    
-    #print 'start create profile'
-    #profile = NavTrajectory(pd)
-    #print 'end create profile'
-    #print 'start CALCULATE'
-    #time = np.arange(0,1000, 1)
-    #phi =  map(profile.phi, time)
-    #lam =  map(profile.lam, time)
-    #h =  map(profile.h, time)
-    
-    #vn =  map(profile.vn, time)
-    #ve =  map(profile.ve, time)
-    #vd =  map(profile.vd, time)
-
-    #an =  map(profile.an, time)
-    #ae =  map(profile.ae, time)
-    #ad =  map(profile.ad, time)
-   
-    #ax =  map(profile.ax, time)
-    #ay =  map(profile.ay, time)
-    #az =  map(profile.az, time)
-
-    #wx =  map(profile.wx, time)
-    #wy =  map(profile.wy, time)
-    #wz =  map(profile.wz, time)
- 
- 
-    #gamma =  map(profile.gamma, time)
-    #theta =  map(profile.theta, time)
-    #psi =  map(profile.psi, time)
- 
-
-    #print 'End CALCULATE'
-    #plot_trajectory(phi, lam, h) 
-    #lgnd = ['vn', 've', 'vd']
-    #plot_trinity(time,np.array([vn, ve, vd]).T, lgnd)
-    #
-    #lgnd = ['an', 'ae', 'ad']
-    #plot_trinity(time,np.array([an, ae, ad]).T, lgnd)
-    
-    #lgnd = ['ax', 'ay', 'az']
-    #plot_trinity(time,np.array([ax, ay, az]).T, lgnd)
-    #
-    #lgnd = ['wx', 'wy', 'wz']
-    #plot_trinity(time,np.array([wx, wy, wz]).T, lgnd)
-
-    #lgnd = ['gamma', 'theta', 'psi']
-    #plot_trinity(time,np.array([gamma, theta, psi]).T, lgnd)
 
