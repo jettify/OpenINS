@@ -4,7 +4,7 @@ Functions for attitude representation and orientation translation.
 
 import numpy as np
 from numpy import linalg as la
-from numpy import cos, sin, arctan, arctan2, arcsin,pi
+from numpy import cos, sin, arctan, arctan2, arcsin, pi
 
 
 def euler2dcm(gamma, theta , psi):
