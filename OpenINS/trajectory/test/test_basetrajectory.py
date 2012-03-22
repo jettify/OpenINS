@@ -83,6 +83,9 @@ class RotationSequenceTest(unittest.TestCase):
         plot_trinity(time, a[1], lgnd=leg_a)
 
 class BasicCalibTrajTest(unittest.TestCase):
+    """
+    Test basic calibration trajectory generator.
+    """
     def setUp(self):
         """
         Setup rotation sequences
@@ -110,8 +113,10 @@ class BasicCalibTrajTest(unittest.TestCase):
         self.time = np.arange(0., 100., 0.1)
         self.fixture = BasicCalibTraj(self.rs)
 
-    def test_gyros(self):
-
+    def test_gyros_plot(self):
+        """
+        Plot gyros versus time.
+        """
         gyros = np.array(map(self.fixture.gyros, self.time))
         leg_a = ['wx', 'wy', 'wz']
         plot_trinity(self.time, gyros, lgnd=leg_a)
