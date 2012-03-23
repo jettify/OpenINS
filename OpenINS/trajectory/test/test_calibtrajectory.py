@@ -1,21 +1,22 @@
 import numpy as np
 import unittest
 
-from trajectory.basetrajectory import RotateIMU
-from trajectory.basetrajectory import RotationSequence
-from trajectory.basetrajectory import BasicCalibTraj
+from trajectory.calibtrajectory import RotateIMU
+from trajectory.calibtrajectory import RotationSequence
+from trajectory.calibtrajectory import BasicCalibTraj
 
 from visualisation.plotter import plot_trinity
+
 class RotateIMUTest(unittest.TestCase):
     """
     Unit test for DCM matrix module
     """
-    
+
     def setUp(self):
         self.time = 20
         self.angle = np.array([np.pi, 0., 0.])
         self.move = RotateIMU(self.time, np.pi, 0., 0.)
-        
+
         self.test_time = 10
 
     def test_calc_rate(self):
@@ -34,10 +35,10 @@ class RotateIMUTest(unittest.TestCase):
 
         test_b = self.move.is_right_time(10)
         self.assertTrue(test_b)
-        
-        test_b = self.move.is_right_time(-5) 
+
+        test_b = self.move.is_right_time(-5)
         self.assertFalse(test_b)
-        
+
 class RotationSequenceTest(unittest.TestCase):
     """
     Test rotation sequence
@@ -60,11 +61,11 @@ class RotationSequenceTest(unittest.TestCase):
 
 
         self.rs = RotationSequence()
-        self.rs.add(self.rot_1) 
-        self.rs.add(self.rot_2) 
-        self.rs.add(self.rot_3) 
-        self.rs.add(self.rot_4) 
-        self.rs.add(self.rot_5) 
+        self.rs.add(self.rot_1)
+        self.rs.add(self.rot_2)
+        self.rs.add(self.rot_3)
+        self.rs.add(self.rot_4)
+        self.rs.add(self.rot_5)
         self.rs.add(self.rot_6)
         self.rs.add(self.rot_7)
 
@@ -150,6 +151,118 @@ class BasicCalibTrajTest(unittest.TestCase):
         earth_abs = [np.sqrt(np.sum(rate**2)) for rate in earth_rate]
         [self.assertAlmostEqual(i, self.fixture.datum.rate) for i in earth_abs]
 
+
+class BasicCalibTrajTest2(unittest.TestCase):
+    """
+    Test basic calibration trajectory generator.
+    """
+    def setUp(self):
+        """
+        Setup rotation sequences
+        """
+        self.turn_time = 20.
+        self.stady_time = 10.
+
+        self.rs1 = RotationSequence()
+        self.rs1.set_init_orientation(0., 0., 0. )
+
+        self.rs1.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs1.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+        self.rs1.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs1.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+        self.rs1.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs1.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+        self.rs1.add(RotateIMU(self.stady_time, 0., 0., 0.))
+
+        self.rs2 = RotationSequence()
+        self.rs2.set_init_orientation(0., 0., 0. )
+
+        self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs2.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+        self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs2.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+        self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs2.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+        self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
+
+
+
+        self.rs3 = RotationSequence()
+        self.rs3.set_init_orientation(np.pi/2, 0., np.pi/2.)
+
+        self.rs3.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs3.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+        self.rs3.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs3.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+        self.rs3.add(RotateIMU(self.stady_time, 0., 0., 0.))
+        self.rs3.add(RotateIMU(self.turn_time, 0., np.pi, 0.))
+        self.rs3.add(RotateIMU(self.stady_time, 0., 0., 0.))
+
+        self.time = np.arange(0., 100., 0.1)
+        self.fixture1 = BasicCalibTraj(self.rs1)
+        self.fixture2 = BasicCalibTraj(self.rs2)
+        self.fixture3 = BasicCalibTraj(self.rs3)
+
+    def test_gyros_plot(self):
+        """
+        Plot gyros versus time.
+        """
+        gyros1 = np.array(map(self.fixture1.gyros, self.time))
+        leg_a = ['wx-f1', 'wy', 'wz']
+        plot_trinity(self.time, gyros1, lgnd=leg_a)
+        
+        gyros2 = np.array(map(self.fixture2.gyros, self.time))
+        leg_a = ['wx-f2', 'wy', 'wz']
+        plot_trinity(self.time, gyros2, lgnd=leg_a)
+
+        gyros3 = np.array(map(self.fixture3.gyros, self.time))
+        leg_a = ['wx-f3', 'wy', 'wz']
+        plot_trinity(self.time, gyros3, lgnd=leg_a)
+
+    def test_accs_plot(self):
+        """
+        Plot acceleration versus time.
+        """
+        accs1 = np.array(map(self.fixture1.accs, self.time))
+        leg_a = ['ax-f1', 'ay', 'az']
+        plot_trinity(self.time, accs1, lgnd=leg_a)
+
+        accs2 = np.array(map(self.fixture2.accs, self.time))
+        leg_a = ['ax-f2', 'ay', 'az']
+        plot_trinity(self.time, accs2, lgnd=leg_a)
+
+        accs3 = np.array(map(self.fixture3.accs, self.time))
+        leg_a = ['ax-f3', 'ay', 'az']
+        plot_trinity(self.time, accs3, lgnd=leg_a)
+
+
+
+    def test_run(self):
+        """
+        Test calibration table movement.
+        """
+
+        a1= np.array(zip(*map(self.rs1.run, self.time)))
+
+        #a = np.array([a])
+        leg_a = ['roll', 'pitch', 'yaw']
+        plot_trinity(self.time, a1[0], lgnd=leg_a)
+
+
+        a2 = np.array(zip(*map(self.rs2.run, self.time)))
+        leg_a = ['roll', 'pitch', 'yaw']
+        plot_trinity(self.time, a2[0], lgnd=leg_a)
+
+        a3 = np.array(zip(*map(self.rs3.run, self.time)))
+        leg_a = ['roll', 'pitch', 'yaw']
+        plot_trinity(self.time, a3[0], lgnd=leg_a)
+
+
+
 if __name__ == '__main__':
-    unittest.main()
+    #unittest.main()
+    pass
+
+
+
 
