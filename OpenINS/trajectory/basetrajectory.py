@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from environnement.datum import WGS84
-from orientationmath.orientation import euler2dcm
+
 
 class BasicTrajectory(object):
     """
