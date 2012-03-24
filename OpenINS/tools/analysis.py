@@ -15,7 +15,7 @@ import numpy as np
 import pylab
 
 
-def avar(data, dt=0.05, ppd=10, plot=1):
+def avar(data, dt=0.05, ppd=10):
     """
     Compute the overlaped Allan variance for sampled data.
 
@@ -71,36 +71,7 @@ def avar(data, dt=0.05, ppd=10, plot=1):
                    ** 2)) / (np.sqrt(2) * k)
         i = i + 1
 
-    if plot == 1:
-        plot_avar(sigma, steps*dt)
-
     return sigma, steps*dt
-
-
-def plot_avar(sigma, time):
-    """
-    Compute the overlaped Allan variance for sampled data.
-
-    Parameters
-    ----------
-    sigma: array
-        computed allan variance
-    time: array
-        corespondet time for avar
-
-    Returns
-    -------
-    avar_plot: plot
-       generate avar_plot
-    """
-
-    pylab.loglog(time, sigma, '-o')
-    pylab.xlabel('$time (s)$')
-    pylab.ylabel('$\sigma(\\tau)$')
-    pylab.title('Allan deviation')
-    pylab.grid(True)
-    pylab.show()
-
 
 def psd(data, dt=0.005, NFFT=512, plot=1):
     """
@@ -147,7 +118,4 @@ def psd(data, dt=0.005, NFFT=512, plot=1):
     return Pxx, freqs
 
 if __name__ == '__main__':
-    str1 = '/home/nickolai/Arsenal/applanix/IMU_Data.txt'
-#    data = np.loadtxt(str1,float).T
-#    a,b = avar(data[6,:]/np.mean(data[6,:]),dt = 0.005,ppd=19)
-#    psd(data, dt = 0.005, NFFT=256, plot=1)
+    pass
