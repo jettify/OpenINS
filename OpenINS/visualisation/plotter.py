@@ -23,15 +23,12 @@ def plot_avar(time, sigma):
     avar_plot: plot
        generate avar_plot
     """
-
-    
     pylab.loglog(time, sigma,'-o')
     pylab.xlabel('$time (s)$')
     pylab.ylabel('$\sigma(\\tau)$')
     pylab.title('Allan deviation')
     pylab.grid(True)
     pylab.show()
-
 
 def plot_trajectory(phi, lam, height):
     """
