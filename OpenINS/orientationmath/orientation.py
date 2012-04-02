@@ -130,7 +130,7 @@ def dcm2roll(dcm_bn):
 
 
 
-    gamma = arctan(dcm_bn[2, 1] / dcm_bn[2, 2])
+    gamma = arctan2(dcm_bn[2, 1], dcm_bn[2, 2])
     return gamma
 
 def dcm2yaw( dcm_bn):
@@ -425,13 +425,4 @@ def quat_prop_4o(q,ang_vel):
 
 
 if __name__ == '__main__':
-    print euler2dcm(0.,0.,0.)
-    print '***********************'
-    print np.round(euler2dcm(-np.pi/2.,-np.pi/2.,0.))
-    print '***********************'
-    print np.round(euler2dcm(np.pi/2.,0.,np.pi/2.))
-    print '***********************'
-
-
-
-
+    pass
