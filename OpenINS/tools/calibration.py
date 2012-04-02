@@ -6,387 +6,317 @@ Base classes for calibration procedure.
 """
 
 from abc import ABCMeta, abstractproperty, abstractmethod 
-import numpy as np 
-from environnement.datum import WGS84 
-#from environnement.datum import EarthDatum
+import numpy as np
+
+
+from environnement.datum import InitPosition
+from orientationmath.orientation import quat_prop_4o, quat2dcm, euler2quat, dcm2euler
+from orientationmath.orientation import quat_prop_1o
+from visualisation.plotter import plot_trinity
+
 from tools.profile import create_profile
 
 
-class CalibrationSensorModel(object):
+class IMUCalibration(object):
     """
-    Basic model for sensors.
+    Base class for IMU sensor calibrating methods.
+
+    In most cases IMU have 6 DoF and consists of two sensors triads:
+    gyroscopes, accelerometers.
     """
-    _bias = np.array([0., 0., 0.])
-    _sfma = np.array([[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]])
-    coefficients = {
-        'bias': _bias,
-        'sfma': _sfma,
-        # sensors bias
-        'x': _bias[0],
-        'y': _bias[1],
-        'z': _bias[2],
-        # sensors scale factor               
-        'xx': _sfma[0, 0],
-        'yy': _sfma[1, 1],
-        'zz': _sfma[2, 2],
-        # sensors misalignment 
-        'xy': _sfma[0, 1],
-        'xz': _sfma[0, 2],
+    __metaclass__ = ABCMeta
 
-        'yx': _sfma[1, 0],
-        'yz': _sfma[1, 2],
-
-        'zx': _sfma[2, 0],
-        'zy': _sfma[2, 1],
-        }
-
-
-
-    def __init__(self):
+    def __init__(self, lat=0.87, lon=0.52, h=0.):
         """
-        Construct sensor coeffs. 
+        Init consts for current calibrator.
         """
-    
-    def __getattr__(self, name):
-        # maps getting of x, y, z, to computation from k
-        try:
-            coeff = self.coefficients[name]
-        except KeyError:
-            # unknown name, give error message
-            raise AttributeError, name
 
-        return coeff  
+        # total calibration time
+        self.time = 0.
+        # sample time
+        self.dt = 0.1
 
-    def __setattr__(self, name, value):
-        # maps settings of x, y, z, to setting of k; forbids others
-       
-        #if name == 'bias' and value.shape() != (1, 3):
-        #    raise ValueError, value
+        ## Essential consts
+        # initial position
+        self.ipos = InitPosition(lat, lon ,h)
+        # gravity in NED frame
+        self._g_n = np.array([0., 0., self.ipos.gravity ])
 
-        #if name == 'sfma' and value.shape() != (3, 3):
-        #    raise ValueError, value
+        ## Basic sensors parameters
+        # gyro parameters: bias and scalefactor, misalignment matrix
+        self.gyro_model = {'x':0., 'y':0., 'z':0.,
+                         'xx':0., 'xy':0., 'xz':0.,
+                         'yx':0., 'yy':0., 'yz':0.,
+                         'zx':0., 'zy':0., 'zz':0.,}
 
-        try:
-            self.coefficients[name] = value
-        except KeyError:
-            # unknown name, give error message
-            raise AttributeError, name
-        self.coefficients[name] = value
+        # acc parameters: bias and scalefactor, misalignment matrix
+        self.acc_model = {'x':0., 'y':0., 'z':0.,
+                         'xx':0., 'xy':0., 'xz':0.,
+                         'yx':0., 'yy':0., 'yz':0.,
+                         'zx':0., 'zy':0., 'zz':0.,}
+    @abstractmethod
+    def gyro_report(self):
+        """
+        Report about calibration coefficients of IMU.
 
+        Coefficients include biases, scale factors, misalignment of
+        gyros and accelerometers.
+        """
 
+    @abstractmethod
+    def acc_report(self):
+        """
+        Report about calibration coefficients of IMU.
 
-    #def __str__(self):
-    #    # readable, concise representation as string
-    #    return "%s K" % self.k
+        Coefficients include biases, scale factors, misalignment of
+        gyros and accelerometers.
+        """
 
-    #def __repr__(self):
-    #    # detailed, precise representation as string
-    #    return "Temperature(k=%r)" % self.k
-
-    #@property
-    #def bias(self):
-    #    """
-    #    Return sensor bias
-    #    """
-    #    return self._bias
-
-    #@property
-    #def sfma(self):
-    #    """
-    #    Return sensors scale factor/misalignment matrix
-    #    """
-    #    return self._sfma
-    #
-    #@bias.setter
-    #def _set_bias(self, data):
-    #    """
-    #    Bias sensor setter.
-
-    #    Parameters
-    #    ----------
-    #    data: 1x3 array, float, sensors bias
-    #    """
-    #    if data.shape() != (1, 3):
-    #        raise ValueError('Vector size should be 3x3')
-    #    
-    #    self._sfma = data 
-    #    self._bias = data
-    #
-    #@sfma.setter    
-    #def _set_sfma(self, data):
-    #    """
-    #    Set sensors scale factor and misalignment.
-
-    #    Parameters
-    #    ----------
-    #    data: 3x3 array, float, scale factor + misalignment + identity matirx
-    #        SF + MA + I, SF: diagonal, I: identity, MA: elements of diagonal
-    #        matrix is zero.
-    #    """
-    #    if data.shape() != (3, 3):
-    #        raise ValueError('Matrix size should be 3x3')
-    #    self._sfma = data 
+    @abstractmethod
+    def load_data(self):
+        """
+        Read data form file.
+        """
 
 
-#class IMUCalibration(object):
-#    """
-#    Base class for IMU sensor calibrating methods.
-#
-#    In most cases IMU have 6 DoF and consists of two sensors triads:
-#    gyroscopes, accelerometers.
-#    """
-#    __metaclass__ = ABCMeta
-#
-#    def __init__(self):
-#        """
-#        Init consts for current calibrator.
-#        """
-#
-#        # Latitude of Kyiv
-#        self._local_latitude = 50 * np.pi / 180
-#        self._local_height = 0
-#        self._g = 9.8
-#        
-#        self.gyro_bias = np.array([0., 0., 0.])
-#        self.acc_bias = np.array([0., 0., 0.])
-#        
-#        self.g
-#        
-#
-#
-#
-#        sensor_parameter = {
-#                "gyro": gyro_report,
-#                "acc": acc_report,
-#                "mag": mag_report,
-#                }
-#
-#
-#
-#    @abstractproperty
-#    def report(self, sensor):
-#        """
-#        Returns sensors biases.
-#        """
-#        
-#
-#    @abstractmethod
-#    def load_data(self):
-#        """
-#        Read data form file.
-#        """
-#
-#    @property
-#    def gravity(self):
-#        """
-#        Returns local value of gravitational acceleration.
-#        """
-#        return self._g
-#
-#    @gravity.setter
-#    def _set_gravity(self, input_g):
-#        """
-#        Set magnitude of local gravity vector.
-#
-#        Parameters
-#        ----------
-#        input_g: float, m/s^2, magnitude of gravity vector.
-#        """
-#        if (9.6 < input_g and input_g > 9.9):
-#            self._g = input_g
-#        else:
-#            raise ValueError('g should be between near 9.79'
-#                             ' and not negative, in m/s^2')
-#
-#    @property
-#    def local_latitude(self):
-#        """
-#        Returns local latitude
-#
-#        This parameter is needed for local gravitational
-#        acceleration compulation based on datum model.
-#        """
-#        return self._local_latitude
-#
-#
-#    @local_latitude.setter
-#    def _set_local_latitude(self, phi):
-#        """
-#        local latitude setter
-#
-#        Parameters
-#        ----------
-#        phi: float, radian, local geodesic latitude
-#        """
-#        if (- np.pi / 2. < phi and phi < np.pi / 2.):
-#            self._local_latitude = phi
-#        else:
-#            raise ValueError('Geodesic latitude must be '
-#                             'between -pi/2 to pi/2 ')
-#
-#    def calc_gravity(self, phi, h, datum):
-#        """
-#        Calculates local gravity value based on
-#        specified Earth datum.
-#
-#        Parameters
-#        ----------
-#        phi: float, radian, local geodesic latitude
-#        h: float, m, local height
-#        datum: Earth datum
-#        """
-#
-#        self._local_height = h
-#        self._set_local_latitude(phi)
-#
-#        if isinstance(datum, EarthDatum):
-#            self._earth_rate = self._datum.rate
-#            self._g = self._datum.gravity(self._local_latitude, \
-#                                          self._local_height)
-#        else:
-#            TypeError('datum must be instance of EarthDatum')
-#
-#
-#class MyCalibrator(IMUCalibration):
-#    """
-#    Calibrator implementation for RLG based IMU
-#    """
-#   
-#    
-#    def integrate(self, dtime, data): 
-#        """
-#        Solve navigation for position of calibration fixture.
-#        """
-#        rows, cols = np.shape(data)
-#        if rows != 6:
-#            raise ValueError('data must have 6 rows') 
-#        
-#
-#        gyro_x = data[0, :] 
-#        gyro_y = data[1, :] 
-#        gyro_z = data[2, :]
-#        
-#        acc_x = data[3, :] 
-#        acc_y = data[4, :] 
-#        acc_z = data[5, :]
-#        
-#        
-#
-#
-#
-#
-#
-#   # def calc_coefficient(self,data,shift):
-#   #     """
-#   #     Returns calibration coefficients for
-#   #     gyro and acc (biases,SF and MA)
-#   #     """
-#   #     a_11 = data 
-#
-#   #     
-#   #     # Gyro scale factors
-#   #     gyro_xx = (a_11 + a_12) / (2. * np.pi * self._g)
-#   #     gyro_yy = (a_21 + a_22) / (2. * np.pi * self._g)
-#   #     gyro_zz = (a_31 + a_32) / (2. * np.pi * self._g)
-#
-#   #     # Acc bias
-#   #     acc_x = (a_12 - a_11) / 4.
-#   #     acc_y = (a_22 - a_21) / 4.
-#   #     acc_z = (a_32 - a_31) / 4.
-#
-#   #     # Acc scale factors
-#   #     acc_xx = (c_32 + c_31 - acc_x) / (2. * self._g)
-#   #     acc_yy = (c_22 + c_21 - acc_y) / (2. * self._g)
-#   #     acc_zz = (c_12 + c_11 - acc_z) / (2. * self._g)
-#
-#   #     # Gyro misalignment
-#   #     gyro_xy = (b_23 + 2. * acc_x) / (2. * self._g)
-#   #     gyro_xz = (a_13 + 2. * acc_x) / (2. * self._g)
-#
-#   #     gyro_yx = - b_21 / (2. * seflf._g)
-#   #     gyro_yz = (b_13 + 2. * acc_y) / (2. * self._g)
-#
-#   #     gyro_zx = (b_33 + 2 * acc_z) / (2. * self._g) + acc_zx
-#   #     gyro_zy = -b_11 / (2. * self._g)
-#
-#   #     # Acc misalignment, assumed as reference axis
-#   #     a_xz = 0
-#   #     a_yz = 0
-#   #     a_xy = 0
-#
-#   #     a_yx = - (a_33 + 2 * acc_y) / (2. * self._g) + gyro_yx
-#   #     a_zx = - b_31 / (2. * self._g) - gyro_xz
-#   #     a_zy = - (a_23 + 2 * acc_z) / (2. * self._g) + gyro_zy
-#   #     
-#   #     self.gyro_bias = np.array(
-#
-#
-#   #     print 'gyro_xx = ', gyro_xx
-#   #     print 'gyro_yy = ', gyro_yy
-#   #     print 'gyro_zz = ', gyro_xx
-#
-#   #     print 'acc_xx = ', acc_xx
-#   #     print 'acc_yy = ', acc_yy
-#   #     print 'acc_zz = ', acc_xx
-#
-#   #     print 'acc_x = ', acc_x
-#   #     print 'acc_y = ', acc_y
-#   #     print 'acc_z = ', acc_x
-#
-#   # def load_data(self, dt, data, point, shift):
-#   #     """
-#   #     Read data form file.
-#   #     """
-#
-#   #     dva2_1
-#   #     dva2_2
-#
-#   #     dva2_1
-#   #     dva2_2
-#
-#   #     dvb1_1
-#   #     dvb1_2
-#
-#   #     dvb2_1
-#   #     dvb2_2
-#
-#   #     dvb2_1
-#   #     dvb2_2
-#
-#   # def report(self):
-#   #     """
-#   #     Print report"""
-#
-#
-#if __name__ == '__main__':
-#
-#    pfl = np.array([[10, 0,        0,        0, 0,  0,     0],
-#                   [20, np.pi/20, 0,        0, 0,  0,     0],
-#                   [10, 0,        np.pi,    0, 0,  0,     0],
-#                   [20, np.pi/20, np.pi,    0, 0,  0,     0],
-#                   [10, 0,        2*np.pi,  0, 0,  0,     0],
-#                   [20, 0,        2*np.pi,  0, 0,  np.pi/20., 0],
-#                   [10, 0,        2*np.pi,  0, 0,  0,   np.pi],
-#                   [30, 0,        2*np.pi,  0, 0,  0,   np.pi]])
-#
-#    
-#
-#
-#    dt = 0.1
-#    base1 = np.array([0, 0, 0])
-#    base2 = np.array([-np.pi/2., -np.pi/2., 0.])
-#    base3 = np.array([np.pi/2., 0, np.pi/2.]) 
-#    
-#    (time1, rate1, angle1) = create_profile(dt, pfl, base1)
-#    (time2, rate2, angle2) = create_profile(dt, pfl, base2)
-#    (time3, rate3, angle3) = create_profile(dt, pfl, base3)
-#
 
+class DieselCalibrator(IMUCalibration):
+    """
+    Calibrator implementation for RLG based IMU designed by Diesel[1].
+
+    This method was covered in some other publications [2, 3].
+
+    References
+    ----------
+    [1] Diesel, J. W., Calibration of A Ring Laser Gyro Inertial Navigation
+        System, Paper 87-7, 13th Biennial Guidance Test Symposium, Holloman
+    [2] Rogers, R. M., Applied Mathematics in Integrated Navigation Systems
+    [3] Christensen R., Fogh N., Inertial Navigation System, AALBORG UNIVERSITY
+
+    """
+    def __init__(self, lat=0.87, lon=0.52, h=0.):
+        """
+        Constructor, init necessary consts.
+
+        Parameters
+        ----------
+        lat: float, rad, latitude
+        lon: float, rad, longitude
+        h: float, meters, height above the sea
+        """
+        super(DieselCalibrator, self).__init__(lat, lon, h)
+
+        self.init_quat_set1 = euler2quat(0., 0., 0.)
+        self.init_quat_set2 = euler2quat(-np.pi/2., -np.pi/2., 0.)
+        self.init_quat_set3 = euler2quat(np.pi/2., 0., np.pi/2.)
+
+    def load_data(self, set1, set2, set3):
+        """
+        Load data, measured from IMU during calibration.
+        """
+
+        # data set 1
+        self.gyro1 = set1[:,:3]
+        self.acc1 = set1[:,3:6]
+        # data set 2
+        self.gyro2 = set2[:,:3]
+        self.acc2 = set2[:,3:6]
+        # data set 3
+        self.gyro3 = set3[:,:3]
+        self.acc3 = set3[:,3:6]
+
+
+    def integrate(self, gyro, acc):
+        """
+        Solve navigation for position of calibration fixture.
+        """
+
+        # Project Earth rate to body frame
+        omega_b = np.dot(quat2dcm(self.quat).T, self.ipos.omega_n)
+
+        # form matrix for gyro and acc errors models
+        gyro_sfma = np.array([
+            [self.gyro_model['xx'], self.gyro_model['xy'], self.gyro_model['xz']],
+            [self.gyro_model['yx'], self.gyro_model['yy'], self.gyro_model['yz']],
+            [self.gyro_model['zx'], self.gyro_model['zy'], self.gyro_model['zz']]])
+
+        gyro_bias = np.array([self.gyro_model['x'],
+                              self.gyro_model['y'],
+                              self.gyro_model['z']])
+
+        acc_sfma = np.array([
+            [self.acc_model['xx'], self.acc_model['xy'], self.acc_model['xz']],
+            [self.acc_model['yx'], self.acc_model['yy'], self.acc_model['yz']],
+            [self.acc_model['zx'], self.acc_model['zy'], self.acc_model['zz']]])
+
+        acc_bias = np.array([self.acc_model['x'],
+                             self.acc_model['y'],
+                             self.acc_model['z']])
+
+        # Compensate bias, ma and sf
+        gyro = np.dot(np.linalg.inv(gyro_sfma + np.eye(3)), gyro - gyro_bias)
+        acc = np.dot(np.linalg.inv(acc_sfma + np.eye(3)), acc - acc_bias)
+
+        # calc INS acceleration
+        dv_n = np.dot(quat2dcm(self.quat), acc) - self._g_n
+        # update IMU orientation
+        self.quat = quat_prop_4o(self.quat, gyro - omega_b*self.dt)
+
+        return dv_n
+
+    def calc_coefficient(self, tbl):
+        """
+        Returns calibration coefficients for
+        gyro and acc (biases,SF and MA)
+
+        st, t1, t2, t3, t4 --> set1
+        st, t1, t2, t3, t4 --> set2
+        st, t1, t2, t3, t4 --> set3
+        """
+
+        self.quat = self.init_quat_set1
+        dvn1 = np.array(zip(*map(self.integrate, self.gyro1, self.acc1)))
+
+        self.quat = self.init_quat_set2
+        dvn2 = np.array(zip(*map(self.integrate, self.gyro2, self.acc2)))
+
+        self.quat = self.init_quat_set3
+        dvn3 = np.array(zip(*map(self.integrate, self.gyro3, self.acc3)))
+
+
+
+        a = np.eye(3)
+        b = np.eye(3)
+#        c = np.eye(3)
+        d = np.array([0., 0., 0.])
+
+
+        for i, dvn in enumerate([dvn1, dvn2, dvn3]):
+
+            r1 = np.mean(dvn[:, tbl[i][2]:tbl[i][2] + tbl[i][0]], axis=1) - \
+                 np.mean(dvn[:, tbl[i][1]:tbl[i][1] + tbl[i][0]], axis=1)
+            r2 = np.mean(dvn[:, tbl[i][3]:tbl[i][3] + tbl[i][0]], axis=1) - \
+                 np.mean(dvn[:, tbl[i][2]:tbl[i][2] + tbl[i][0]], axis=1)
+            r3 = np.mean(dvn[:, tbl[i][4]:tbl[i][4] + tbl[i][0]], axis=1) - \
+                 np.mean(dvn[:, tbl[i][3]:tbl[i][3] + tbl[i][0]], axis=1)
+
+            d[i] = np.mean(dvn[2, tbl[i][2]:tbl[i][2] + tbl[i][0]], axis=0) + \
+                   np.mean(dvn[2, tbl[i][1]:tbl[i][1] + tbl[i][0]], axis=0)
+
+#            print np.shape(dvn[tbl[i][2]:tbl[i][2] + tbl[i][0], :])
+            for j, r in enumerate([r1, r2, r3]):
+
+                a[i, j] = r[0]
+                b[i, j] = r[1]
+                # vertical channel not used yet
+#                c[i, j] = r[2]
+
+         # Gyro scale factors
+        self.gyro_model['xx'] += (b[0, 0] + b[0, 1]) / (- 2. * np.pi * self.ipos.gravity)
+        self.gyro_model['yy'] += (b[1, 0] + b[1, 1]) / (- 2. * np.pi * self.ipos.gravity)
+        self.gyro_model['zz'] += (b[2, 0] + b[2, 1]) / (- 2. * np.pi * self.ipos.gravity)
+
+        # Acc bias
+        self.acc_model['x'] += (b[2, 1] - b[2, 0]) / 4.
+        self.acc_model['y'] += (b[0, 1] - b[0, 0]) / 4.
+        self.acc_model['z'] += (b[1, 1] - b[1, 0]) / 4.
+
+
+        # Acc scale factors
+        self.acc_model['xx'] += (d[1]) / (2. * self.ipos.gravity)
+        self.acc_model['yy'] += (d[2]) / (2. * self.ipos.gravity)
+        self.acc_model['zz'] += (d[0]) / (2. * self.ipos.gravity)
+
+        # Gyro misalignment
+
+        self.gyro_model['xy'] += (a[1, 0])/(-2.*self.ipos.gravity)
+
+        self.gyro_model['xz'] += (a[0, 2] + 2.*self.acc_model['x'])/\
+                                 (2.*self.ipos.gravity)
+        self.gyro_model['yx'] += (a[1, 2] + 2.*self.acc_model['z'])/\
+                                 (2.*self.ipos.gravity)
+        self.gyro_model['yz'] += (b[0, 2] + 2.*self.acc_model['y'])/\
+                                 (2.*self.ipos.gravity)
+        self.gyro_model['zx'] += (a[0, 0])/(-2.*self.ipos.gravity)
+
+
+
+        # Acc misalignment, next assumed as reference axis
+        self.acc_model['xy'] = 0.
+        self.acc_model['xz'] = 0.
+        self.acc_model['xy'] = 0.
+
+
+        self.acc_model['zx'] = -(b[1, 2] + 2*self.acc_model['z'])/\
+                              (2*self.ipos.gravity) + self.gyro_model['zx']
+        self.acc_model['yx'] = -(b[2, 2] + 2*self.acc_model['x'])/\
+                              (2*self.ipos.gravity) + self.gyro_model['xy']
+
+        self.acc_model['zy'] = -a[2, 0]/(2*self.ipos.gravity) -\
+                              self.gyro_model['yz']
+
+
+        self.gyro_model['zy'] += (b[2, 2] + 2*self.acc_model['z'])/\
+                                 -(2*self.ipos.gravity) + self.acc_model['zy']
+
+
+#        self.gyro_report()
+
+
+        return dvn1, dvn2, dvn3
+    def gyro_report(self):
+        """
+        Report about calibration coefficients of IMU.
+
+        Coefficients include biases, scale factors, misalignment of
+        gyros and accelerometers.
+        """
+#        print 'g sf1', self.gyro_sfma['xx']
+#        print 'g sf2', self.gyro_sfma['yy']
+#        print 'g sf3', self.gyro_sfma['zz']
+
+        print '*****************************'
+        print 'a b1=', self.acc_model['x']
+        print 'a b2=', self.acc_model['y']
+        print 'a b3=', self.acc_model['z']
+        print '*****************************'
+        print 'g b1=', self.gyro_model['x']
+        print 'g b2=', self.gyro_model['y']
+        print 'g b3=', self.gyro_model['z']
+
+        print '*****************************'
+        print 'a xx', self.acc_model['xx']
+        print 'a yy', self.acc_model['yy']
+        print 'a zz', self.acc_model['zz']
+        print '*****************************'
+        print 'g xx', self.gyro_model['xx']
+        print 'g yy', self.gyro_model['yy']
+        print 'g zz', self.gyro_model['zz']
+        print '*****************************'
+        print 'g xy', self.gyro_model['xy']
+        print 'g xz', self.gyro_model['xz']
+        print 'g yx', self.gyro_model['yx']
+        print 'g yz', self.gyro_model['yz']
+        print 'g zx', self.gyro_model['zx']
+        print 'g zy', self.gyro_model['zy']
+        print '*****************************'
+        print 'a xy', self.acc_model['xy']
+        print 'a xz', self.acc_model['xz']
+        print 'a yx', self.acc_model['yx']
+        print 'a yz', self.acc_model['yz']
+        print 'a zx', self.acc_model['zx']
+        print 'a zy', self.acc_model['zy']
+
+
+
+    def acc_report(self):
+        """
+        Report about calibration coefficients of IMU.
+
+        Coefficients include biases, scale factors, misalignment of
+        gyros and accelerometers.
+        """
 
 
 if __name__ == '__main__':
-    gyro = CalibrationSensorModel()
-    print gyro.x 
-    gyro.y = 5.
-    print gyro.bias
-    print gyro.y
+    pass
