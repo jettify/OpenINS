@@ -2,40 +2,9 @@ import numpy as np
 
 from basetrajectory import CalibTrajectory
 from orientationmath.orientation import euler2dcm
-
-class BasicCalibTraj(CalibTrajectory):
-    """
-    Basic calibration table movement gentrator.
-    """
-    def __init__(self, rs):
-        """
-        Parameters
-        ----------
-        rs: rotation sequence object
-        """
-        super(BasicCalibTraj, self).__init__()
-
-        if isinstance(rs, RotationSequence):
-            self.rs = rs
-        else:
-            raise TypeError('Must be instance of RotationSequence')
-
-
-
-    def orientation(self, time):
-        angle, rate = self.rs.run(time)
-        return angle
-
-    def gyros(self, time):
-        angle, rate = self.rs.run(time)
-        w = rate + np.dot(euler2dcm(angle[0], angle[1], angle[2]), self._omega_n)
-        return w
-
-    def accs(self, time):
-        angle, rate = self.rs.run(time)
-        gravity  = np.array([0., 0., self._g])
-
-        return np.dot(euler2dcm(angle[0], angle[1], angle[2]), gravity)
+from orientationmath.orientation import dcm2euler
+from orientationmath.orientation import euler2quat
+from orientationmath.orientation import quat2dcm
 
 class RotateIMU(object):
     """
@@ -53,7 +22,7 @@ class RotateIMU(object):
         ----------
         time: float, sec
         x_turn: float, rad, relative turn around x axis of IMU
-        y_turn: float, rad , relative turn around y axis of IMU
+        y_turn: float, rad, relative turn around y axis of IMU
         z_turn: float, rad, relative turn around z axis of IMU
         """
 
@@ -62,7 +31,7 @@ class RotateIMU(object):
         # time between start and end of current rotation
         self.time_total = time1
 
-        self.angle_start = np.array([0., 0., 0.,])
+        self.init_dcm = euler2dcm(0., 0., 0.)
         self.angle_total = np.array([x_turn, y_turn, z_turn])
 
         self.turn_rate = self._calc_rate(self.time_total, self.angle_total)
@@ -89,7 +58,7 @@ class RotateIMU(object):
         rate = angle/t
         return rate
 
-    def angle(self, t):
+    def orientation_dcm(self, t):
         """
         Calculate angle at specified time.
 
@@ -97,8 +66,10 @@ class RotateIMU(object):
         ----------
         t: float, sec, time
         """
+        a = self.turn_rate * (t - self.time_start)
+        turn_dcm = euler2dcm(a[0], a[1], a[2])
 
-        return self.angle_start + self.turn_rate * (t - self.time_start)
+        return np.dot(self.init_dcm, turn_dcm)
 
     def rate(self, t):
         """
@@ -115,8 +86,7 @@ class RotateIMU(object):
         """
         Check for right time.
         """
-        if self.time_start <= time and\
-           time < self.time_start + self.time_total:
+        if self.time_start <= time < self.time_start + self.time_total:
 
             return True
         else:
@@ -130,8 +100,14 @@ class RotationSequence(object):
     def __init__(self):
 
         self.time = [0.]
-        self.angle = [np.array([0., 0., 0])]
+        self.dcm = [euler2dcm(0., 0., 0.)]
         self.sequence = []
+
+    #    def get_init_orientation(self):
+    #        """
+    #        Returns initial orientation of rotation sequence.
+    #        """
+    #        return self.angle[0]
 
     def set_init_orientation(self, gamma, theta, psi):
         """
@@ -143,7 +119,7 @@ class RotationSequence(object):
         theta: float, rad, pitch
         psi: float, rad, yaw
         """
-        self.angle.append(np.array([gamma, theta, psi]))
+        self.dcm[0] = euler2dcm(gamma, theta, psi)
 
     def add(self, move):
         """
@@ -158,9 +134,11 @@ class RotationSequence(object):
             move.time_start = sum(self.time)
             self.time.append(move.time_total)
 
-            move.angle_start = sum(self.angle)
-            self.angle.append(move.angle_total)
+            move.init_dcm = self.dcm[-1]
 
+            turn_dcm = euler2dcm(move.angle_total[0], move.angle_total[1], move.angle_total[2])
+
+            self.dcm.append(np.dot(self.dcm[-1], turn_dcm))
             self.sequence.append(move)
 
         else:
@@ -185,6 +163,44 @@ class RotationSequence(object):
 
             if sq.is_right_time(time):
                 rate = sq.rate(time)
-                angle = sq.angle(time)
+                dcm = sq.orientation_dcm(time)
 
-                return angle, rate
+                return dcm, rate
+
+
+class BasicCalibTraj(CalibTrajectory):
+    """
+    Basic calibration table movement generator.
+    """
+    def __init__(self, rs):
+        """
+        Parameters
+        ----------
+        rs: rotation sequence object
+        """
+        super(BasicCalibTraj, self).__init__()
+
+        if isinstance(rs, RotationSequence):
+            self.rs = rs
+
+        else:
+            raise TypeError('Must be instance of RotationSequence')
+
+    def orientation(self, time):
+        dcmbn, rate = self.rs.run(time)
+        return dcm2euler(dcmbn)
+
+    def gyros(self, time):
+
+        dcm, rate = self.rs.run(time)
+        # add Earth angular rate to gyro measurement
+
+        w = rate + np.dot(dcm.T, self._omega_n)
+        return w
+
+    def accs(self, time):
+        dcm, rate = self.rs.run(time)
+        g  = np.array([0., 0., self.ipos.gravity])
+
+        return np.dot(dcm.T, g)
+
