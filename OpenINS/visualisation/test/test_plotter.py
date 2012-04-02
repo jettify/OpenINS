@@ -4,9 +4,10 @@ Test plotting functions.
 """
 import numpy as np
 import unittest
+from time import sleep
 
 from visualisation.plotter import *
-
+from tools.analysis import avar
 
 class PlotterTest(unittest.TestCase):
     """
@@ -17,11 +18,24 @@ class PlotterTest(unittest.TestCase):
         """
         Lets define some variances for diferent noise models in inertial sensors.
         """
+
+        self.data = 1 * np.random.randn(10000) + 0
+        self.sigma, self.ltime = avar(self.data, dt=0.1)
+
         self.time = np.arange(0,10,0.1)
         self.val1 = np.sin(self.time)
         self.val2 = np.cos(self.time)
         self.val3 = 0.01*self.time
- 
+
+
+    def test_plot_avar(self):
+        """
+        Basic test for allan variance plotter.
+        """
+        plot_avar( self.ltime, self.sigma)
+
+
+
     def test_plot_trajectory(self):
         """
         Basic test for 3D trajectory visualisation.

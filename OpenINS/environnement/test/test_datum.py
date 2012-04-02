@@ -2,9 +2,11 @@
 # coding=utf8
 
 import unittest
+import numpy as np
 
 from environnement.datum import WGS84
-from numpy import pi
+from environnement.datum import InitPosition
+
 
 
 #Constants for WGS84 datum
@@ -42,22 +44,42 @@ class test_WGS84TestCase(unittest.TestCase):
         self.assertAlmostEqual(self.wgs84.f, reff, places=12)
         self.assertAlmostEqual(self.wgs84.rate, refrate, places=12)
 
-    def test_gravity_knowninput(self):
+    def test_gravity(self):
 
-        testg = self.wgs84.gravity(50 * (pi / 180), 100.0)
+        testg = self.wgs84.gravity(50 * (np.pi / 180), 100.0)
         self.assertAlmostEqual(testg, refg, places=12)
 
     def test_curvature_knowninput(self):
-        testRE,testRN = self.wgs84.curvature(50 * (pi / 180))
+        testRE,testRN = self.wgs84.curvature(50 * (np.pi / 180))
         self.assertAlmostEqual(testRN,refRN,places=8)
         self.assertAlmostEqual(testRE,refRE,places=8)
 
     def test_dcurvature_knowninput(self):
-        testRE,testRN,testdRE,testdRN = self.wgs84.dcurvature(50*(pi/180),0.0)
+        testRE,testRN,testdRE,testdRN = self.wgs84.dcurvature(50*(np.pi/180),0.0)
         self.assertAlmostEqual(testRE,refRE,places=8)
         self.assertAlmostEqual(testRN,refRN,places=8)
         self.assertAlmostEqual(testdRE,0,places=8)
         self.assertAlmostEqual(testdRN,0,places=8)
+
+class InitPositionTest(unittest.TestCase):
+    """
+    Test fo init position class
+    """
+
+    def setUp(self):
+        """
+        Setup instance of class.
+        """
+        self.pos = InitPosition(np.deg2rad(50), np.deg2rad(30), 100.)
+        self.wgs84 = WGS84()
+
+    def properties_test(self):
+        """
+        Test properties.
+        """
+        self.assertAlmostEqual(self.pos.datum.rate, self.wgs84.rate, places=12)
+
+
 
 
 if __name__ == '__main__':

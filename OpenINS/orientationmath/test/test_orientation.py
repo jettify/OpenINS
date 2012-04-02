@@ -170,14 +170,14 @@ class Dcm2QuaternionTest(unittest.TestCase):
         """
         Check for known values
         """
-        q = np.array([refq1,refq2,refq3,refq4])
-        gyro_output = np.array([gyro_rrate,gyro_prate,gyro_yrate])
-        testquat = quat_prop_1o(q,gyro_output)
+        q = np.array([refq1, refq2, refq3, refq4])
+        gyro_output = np.array([gyro_rrate, gyro_prate, gyro_yrate])
+        testquat = quat_prop_1o(q, gyro_output)
 
-        self.assertAlmostEqual(testquat[0],refupdq1,places=12)
-        self.assertAlmostEqual(testquat[1],refupdq2,places=12)
-        self.assertAlmostEqual(testquat[2],refupdq3,places=12)
-        self.assertAlmostEqual(testquat[3],refupdq4,places=12)
+        self.assertAlmostEqual(testquat[0], refupdq1, places=12)
+        self.assertAlmostEqual(testquat[1], refupdq2, places=12)
+        self.assertAlmostEqual(testquat[2], refupdq3, places=12)
+        self.assertAlmostEqual(testquat[3], refupdq4, places=12)
 
     def test_quatprop_4o(self):
         """
@@ -185,13 +185,13 @@ class Dcm2QuaternionTest(unittest.TestCase):
         """
 
         q = np.array([refq1,refq2,refq3,refq4])
-        gyro_output = np.array([gyro_rrate,gyro_prate,gyro_yrate])
-        testquat = quat_prop_4o(q,gyro_output)
+        gyro_output = np.array([gyro_rrate, gyro_prate, gyro_yrate])
+        testquat = quat_prop_4o(q, gyro_output)
 
         # self.assertAlmostEqual(testquat[0],refupdq1,places=12)
-        self.assertAlmostEqual(testquat[1],refupdq2,places=12)
-        self.assertAlmostEqual(testquat[2],refupdq3,places=12)
-        self.assertAlmostEqual(testquat[3],refupdq4,places=12)
+        self.assertAlmostEqual(testquat[1], refupdq2, places=12)
+        self.assertAlmostEqual(testquat[2], refupdq3, places=12)
+        self.assertAlmostEqual(testquat[3], refupdq4, places=12)
 
 class ModuleCrossTest(unittest.TestCase):
     def test_dcm_euler(self):
@@ -200,28 +200,25 @@ class ModuleCrossTest(unittest.TestCase):
 #        refTheta = random.random()
 #        refPsi = random.random()
 
-        refGamma = 0
+        refGamma = -np.pi/2.
         refTheta = -np.pi/2.
         refPsi = 0
 
-        testDCM = euler2dcm(refGamma,refTheta,refPsi)
+        testDCM = euler2dcm(refGamma, refTheta, refPsi)
         testGamma, testTheta, testPsi = dcm2euler(testDCM)
 
-        self.assertAlmostEqual(testTheta,refTheta,places=12)
-        self.assertAlmostEqual(testGamma,refGamma,places=12)
-        self.assertAlmostEqual(testPsi,refPsi,places=12)
+        self.assertAlmostEqual(testTheta, refTheta, places=12)
+        self.assertAlmostEqual(testGamma, refGamma, places=12)
+        self.assertAlmostEqual(testPsi, refPsi, places=12)
 
     def test_dcm_quat(self):
 
         testq1,testq2,testq3,testq4 = dcm2quat(refDCM)
-        testDCM = quat2dcm(np.array([ testq1,testq2,testq3,testq4]))
+        testDCM = quat2dcm(np.array([testq1, testq2, testq3, testq4]))
 
         for i in [0,1,2]:
             for j in [0,1,2]:
                 self.assertAlmostEqual(testDCM[i,j],refDCM[i,j],places=12)
-
-
-
 
 if __name__ == '__main__':
     unittest.main()
