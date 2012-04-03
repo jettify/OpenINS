@@ -4,7 +4,7 @@ Base module for trajectory generators
 
 from abc import ABCMeta, abstractmethod
 import numpy as np
-
+import sympy as sp
 from environnement.datum import InitPosition
 
 class BasicTrajectory(object):
@@ -50,8 +50,59 @@ class BasicTrajectory(object):
         Returns orientation of body versus time.
         """
 
-class NavTrajectory(BasicTrajectory):
+class CalibTrajectory(BasicTrajectory):
+    """
+    Trajectory generator for calibration purposes.
 
+    IMU installed on stationary base, means position remains the same. Only
+    orientation is changing.
+    """
+    __metaclass__ = ABCMeta
+
+    def __init__(self, lat=0.87, lon=0.52, h=0.):
+        """
+        Init consts for current calibrator.
+        """
+
+        # Latitude of Kyiv, you probably should change to your IMU position :)
+        # via set_position()
+
+        # set local position to Kyiv)
+        # you probably want to change this))
+        self.ipos = InitPosition(lat, lon, h)
+
+        # Earth angular speed projected to NED frame
+        self._omega_n = np.array([np.cos(self.ipos.lat), 0.,
+                                 -np.sin(self.ipos.lat)])*self.ipos.datum.rate
+        # Initial orientation
+        self._roll = 0.0
+        self._pitch = 0.0
+        self._yaw = 0.0
+
+    def init_position(self):
+        """
+        Returns initial position of IMU.
+        """
+        pos = np.array([self.ipos.lat, self.ipos.lon, self.ipos.h])
+        return pos
+
+    def position(self):
+        """
+        Since INS stationary during calibration, so
+        current position equals to init position.
+        """
+
+        return self.init_position()
+
+    def init_orientation(self):
+        """
+        Returns initial orientation of IMU.
+        """
+
+        return self._roll, self._pitch, self._yaw
+
+
+class NavTrajectory(BasicTrajectory):
     """
     Base class for trajectory generators for INS that
     works in Local Geodesic Frame. 
@@ -65,22 +116,8 @@ class NavTrajectory(BasicTrajectory):
         Init some essential consts.
         """
 
-        self.datum = WGS84()
-        self.profile(pd)        
-       
-       
-       # Symbolic variables 
-       # self.t = sp.Symbol('t') 
-       # self.phi, self.lam, self.h = sp.symbols('phi lam h')
-       # self.ve, self.vn, self.vu = sp.symbols('ve vn vu')
-       # self.ae, self.an, self.au = sp.symbols('ae an au')
-       # self.theta, self.psi, self.gamma = sp.symbols('theta psi gamma')
-       # self.wx, self.wy, self.wz = sp.symbols('wx wy wz')
-       # self.ax, self.ay, self.az = sp.symbols('ax ay az')
-    
-       # self.g = sp.symbols('g')
-       # self.RE, self.RN = sp.symbols('RE RN')
-
+        self.ipos = InitPosition(lat=0.87, lon=0.52, height=0.)
+        self.profile(pd)
 
     def profile(self, pd):
         """
@@ -106,8 +143,8 @@ class NavTrajectory(BasicTrajectory):
         h = pd[2, 0] + pd[2, 1] * t + pd[2, 2] * sp.cos(pd[2, 3] \
                    * t + pd[2, 4])
         
-        re = self.datum.a / sp.sqrt(1 - self.datum.e2 * sp.sin(phi) **2)
-        rn = self.datum.a*(1 - self.datum.e2) / (sp.sqrt(1 - self.datum.e2 * \
+        re = self.ipos.datum.a / sp.sqrt(1 - self.ipos.datum.e2 * sp.sin(phi) **2)
+        rn = self.ipos.datum.a*(1 - self.ipos.datum.e2) / (sp.sqrt(1 - self.ipos.datum.e2 *
              sp.sin(phi)**2)**3)
         
         vn = sp.diff(phi, t)*(rn + h)
@@ -116,11 +153,11 @@ class NavTrajectory(BasicTrajectory):
         vr = sp.sqrt(ve ** 2 + vn ** 2)  
         
         miu = 398600.44*(10**9) # m^3/c^2  
-        ge = miu/(self.datum.a**2);
-        g = ge*(1.0 - 2.0*(h/self.datum.a)+0.75*self.datum.e2*(sp.sin(phi)**2)); 
+        ge = miu/(self.ipos.datum.a**2)
+        g = ge*(1.0 - 2.0*(h/self.ipos.datum.a)+0.75*self.ipos.datum.e2*(sp.sin(phi)**2))
         
  
-        q = sp.diff(lam, t) + 2 * self.datum.rate       
+        q = sp.diff(lam, t) + 2 * self.ipos.datum.rate
                 
         an = sp.diff(vn, t) + q * sp.sin(phi) * ve - \
              sp.diff(phi, t) * vd
@@ -131,7 +168,7 @@ class NavTrajectory(BasicTrajectory):
 
         theta = sp.atan(-vd/vr)
         psi = sp.atan(ve/vn)
-        gamma = kg*(vn*sp.diff(ve,t) - \
+        gamma = kg*(vn*sp.diff(ve,t) -
                 ve*sp.diff(vn,t))/vr*sp.cos(theta) 
         
         
@@ -141,9 +178,9 @@ class NavTrajectory(BasicTrajectory):
         wib_z = sp.diff(theta,t)*sp.cos(gamma) - sp.diff(psi,t)* \
                 sp.cos(theta) * sp.sin(gamma)
         
-        omega_n = (self.datum.rate + sp.diff(lam, t))*sp.cos(phi)
+        omega_n = (self.ipos.datum.rate + sp.diff(lam, t))*sp.cos(phi)
         omega_e = -sp.diff(phi, t)
-        omega_d = - (self.datum.rate + sp.diff(lam, t))*sp.sin(phi)
+        omega_d = - (self.ipos.datum.rate + sp.diff(lam, t))*sp.sin(phi)
         
         omega = sp.Matrix([omega_n,omega_e,omega_d])
       
@@ -151,18 +188,18 @@ class NavTrajectory(BasicTrajectory):
 
 
         # rotation psi about z axis
-        C1 = sp.Matrix([[sp.cos(psi), sp.sin(psi), 0], \
-                        [-sp.sin(psi), sp.cos(psi), 0], \
+        C1 = sp.Matrix([[sp.cos(psi), sp.sin(psi), 0],
+                        [-sp.sin(psi), sp.cos(psi), 0],
                         [0, 0 , 1]])
                  
         # rotation theta about y axis
-        C2 = sp.Matrix([[sp.cos(theta), 0, -sp.sin(theta)] , \
-                        [0, 1, 0          ], \
+        C2 = sp.Matrix([[sp.cos(theta), 0, -sp.sin(theta)] ,
+                        [0, 1, 0          ],
                         [sp.sin(theta), 0, sp.cos(theta)]])        
         
         # rotation gamma about x axis
-        C3 = sp.Matrix([[1, 0, 0         ], \
-                        [0, sp.cos(gamma), sp.sin(gamma)], \
+        C3 = sp.Matrix([[1, 0, 0         ],
+                        [0, sp.cos(gamma), sp.sin(gamma)],
                         [0, -sp.sin(gamma), sp.cos(gamma)]])
         
         # calculate body to navigation DCM    
@@ -174,6 +211,8 @@ class NavTrajectory(BasicTrajectory):
         win = dcm.T*omega
         
         ax, ay, az = dcm.T*sp.Matrix([an, ae, ad])
+
+
 
         ## Body rate measured by gyros
         ## Sum of body rotarion in inertial space and movement of 
@@ -195,7 +234,7 @@ class NavTrajectory(BasicTrajectory):
         self.an = sp.lambdify(t, an, "numpy")
         self.ae = sp.lambdify(t, ae, "numpy") 
         self.ad = sp.lambdify(t, ad, "numpy")
-       
+
         self.wx = sp.lambdify(t, wx, "numpy")
         self.wy = sp.lambdify(t, wy, "numpy") 
         self.wz = sp.lambdify(t, wz, "numpy")
@@ -204,18 +243,44 @@ class NavTrajectory(BasicTrajectory):
         self.ax = sp.lambdify(t, ax, "numpy")
         self.ay = sp.lambdify(t, ay, "numpy") 
         self.az = sp.lambdify(t, az, "numpy")
- 
+
         self.gamma = sp.lambdify(t, gamma, "numpy")
         self.theta = sp.lambdify(t, theta, "numpy") 
         self.psi = sp.lambdify(t, psi, "numpy")
 
 
+    def accs(self, time):
+        acc = np.array([self.ax(time), self.ay(time),self.az(time)])
+        return acc
+
+    def gyros(self, time):
+        gyros = np.array([self.wx(time), self.wy(time),self.wz(time)])
+        return gyros
+
+    def init_orientation(self):
+        pass
+    def init_position(self, time):
+        pass
+
+    def orientation(self, time):
+        """
+        Returns orientation of IMU in given time.
+        """
+        euler = np.array([self.gamma(time), self.theta(time), self.psi(time)])
+        return euler
+
+    def position(self, time):
+        """
+        Returns position of IMU in given time.
+        """
+        pos = np.array([self.gamma(time), self.theta(time), self.psi(time)])
+        return pos
 
 
 if __name__ == "__main__":
     from visualisation.plotter import plot_trinity
     from visualisation.plotter import plot_trajectory
-
+    from time import time
     pd = np.array([[55.0 * (np.pi / 180.0), 0.0, 0.004, 2 * np.pi / 600.0, 0],
                    [30.0 * (np.pi / 180.0), 0.00004, 0, 2 * np.pi / 600.0, 0],
                    [5000.0, 0.0, -5000.0, 2 * np.pi / 600.0, 0]])  
@@ -224,32 +289,36 @@ if __name__ == "__main__":
     profile = NavTrajectory(pd)
     print 'end create profile'
     print 'start CALCULATE'
-    time = np.arange(0,1000, 1)
+    time = np.arange(0,1000, 0.1)
     phi =  map(profile.phi, time)
     lam =  map(profile.lam, time)
     h =  map(profile.h, time)
-    
+    print 'Position: DONE'
     vn =  map(profile.vn, time)
     ve =  map(profile.ve, time)
     vd =  map(profile.vd, time)
-
+    print 'Velocity: DONE'
     an =  map(profile.an, time)
     ae =  map(profile.ae, time)
     ad =  map(profile.ad, time)
-   
+    print 'Acceleration: DONE'
+
     ax =  map(profile.ax, time)
+
     ay =  map(profile.ay, time)
+
     az =  map(profile.az, time)
 
+    print 'Acc: DONE'
     wx =  map(profile.wx, time)
     wy =  map(profile.wy, time)
     wz =  map(profile.wz, time)
- 
- 
+    print 'Gyro: DONE'
+
     gamma =  map(profile.gamma, time)
     theta =  map(profile.theta, time)
     psi =  map(profile.psi, time)
- 
+    print 'Orientation: DONE'
 
     print 'End CALCULATE'
     plot_trajectory(phi, lam, h) 
@@ -258,7 +327,8 @@ if __name__ == "__main__":
     
     lgnd = ['an', 'ae', 'ad']
     plot_trinity(time,np.array([an, ae, ad]).T, lgnd)
-    
+
+    start = time()
     lgnd = ['ax', 'ay', 'az']
     plot_trinity(time,np.array([ax, ay, az]).T, lgnd)
     
