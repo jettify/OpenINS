@@ -12,8 +12,8 @@ class TestDieselCalibrator(unittest.TestCase):
 
     def setUp(self):
 
-        self.turn_time = 20.
-        self.stady_time = 20.
+        self.turn_time = 100.
+        self.stady_time = 100.
         self.dt = 0.05
 
 
@@ -60,42 +60,48 @@ class TestDieselCalibrator(unittest.TestCase):
         self.fixture3 = BasicCalibTraj(self.rs3)
 
 
-        self.time = np.arange(0., 140., self.dt)
+        self.time = np.arange(0., 700., self.dt)
+
+        to_rads = (np.pi/180.)/3600.
+        shape = len(self.time)
+        # 0.000001454
+        gyro_rand1 = (0.15e-05)*np.random.randn(shape,3)
+        gyro_rand2 = (0.15e-05)*np.random.randn(shape,3)
+        gyro_rand3 = (0.15e-05)*np.random.randn(shape,3)
+
+        acc_rand1 = 0.0005*np.random.randn(shape,3)
+        acc_rand2 = 0.0005*np.random.randn(shape,3)
+        acc_rand3 = 0.0005*np.random.randn(shape,3)
 
 
-        gyros1 = np.array(map(self.fixture1.gyros, self.time))
-        gyros2 = np.array(map(self.fixture2.gyros, self.time))
-        gyros3 = np.array(map(self.fixture3.gyros, self.time))
+        gyros1 = np.array(map(self.fixture1.gyros, self.time)) + gyro_rand1
+        gyros2 = np.array(map(self.fixture2.gyros, self.time)) + gyro_rand2
+        gyros3 = np.array(map(self.fixture3.gyros, self.time)) + gyro_rand3
 
-        accs1 = np.array(map(self.fixture1.accs, self.time))
-        accs2 = np.array(map(self.fixture2.accs, self.time))
-        accs3 = np.array(map(self.fixture3.accs, self.time))
+        accs1 = np.array(map(self.fixture1.accs, self.time)) + acc_rand1
+        accs2 = np.array(map(self.fixture2.accs, self.time)) + acc_rand2
+        accs3 = np.array(map(self.fixture3.accs, self.time)) + acc_rand3
 
-        to_rad = (np.pi/180.)/3600.
-        self.gyro_model = {'x': 0.03*to_rad, 'y':0.04*to_rad, 'z':0.05*to_rad,
-                           'xx':0.0007, 'xy':0.0003, 'xz':0.0002,
-                           'yx':0.0004, 'yy':0.0007, 'yz':0.0003,
-                           'zx':0.0005, 'zy':0.0006, 'zz':0.0007,}
 
-#        self.gyro_model = {'x': 0.00*to_rad, 'y':0.00*to_rad, 'z':0.00*to_rad,
-#                           'xx':0.00005, 'xy':0.0003, 'xz':0.0000,
-#                           'yx':0.0005, 'yy':0.00005, 'yz':0.0000,
-#                           'zx':0.0000, 'zy':0.0000, 'zz':0.00005,}
+        self.gyro_model = {'x': 3e-07, 'y':5e-07, 'z':7e-07,
+                           'xx':0.0001, 'xy':0.0002, 'xz':0.0003,
+                           'yx':0.0004, 'yy':0.0005, 'yz':0.0006,
+                           'zx':0.0007, 'zy':0.0008, 'zz':0.0009,}
+
 
         # acc parameters: bias and scalefactor, misalignment matrix
         self.acc_model = {'x': 0.003, 'y':0.004, 'z':0.005,
-                           'xx':0.007, 'xy':0.000, 'xz':0.000,
-                           'yx':0.000, 'yy':0.007, 'yz':0.000,
-                           'zx':0.005, 'zy':0.0045, 'zz':0.007,}
-
+                           'xx':0.001, 'xy':0.002, 'xz':0.000,
+                           'yx':0.000, 'yy':0.003, 'yz':0.000,
+                           'zx':0.004, 'zy':0.005, 'zz':0.006,}
 
         gsfma = np.array([[self.gyro_model['xx'], self.gyro_model['xy'], self.gyro_model['xz']],
             [self.gyro_model['yx'], self.gyro_model['yy'], self.gyro_model['yz']],
             [self.gyro_model['zx'], self.gyro_model['zy'], self.gyro_model['zz']]])
 
         gb = np.array([self.gyro_model['x'],
-                              self.gyro_model['y'],
-                              self.gyro_model['z']])
+                            self.gyro_model['y'],
+                            self.gyro_model['z']])
 
         asfma = np.array([
             [self.acc_model['xx'], self.acc_model['xy'], self.acc_model['xz']],
@@ -126,25 +132,42 @@ class TestDieselCalibrator(unittest.TestCase):
         self.mc.load_data(self.data_set1, self.data_set2, self.data_set3)
 
 
-        t0 = 20/self.dt -self.dt
+        t0 = 100/self.dt -self.dt
         t1 = 0/self.dt
-        t2 = 40/self.dt
-        t3 = 80/self.dt
-        t4 = 120/self.dt
+        t2 = 200/self.dt
+        t3 = 400/self.dt
+        t4 = 600/self.dt
 
 
         # schedule of rotations
+        # t0: time shift
         tbl = np.array([[t0, t1, t2, t3, t4],
                         [t0, t1, t2, t3, t4],
                         [t0, t1, t2, t3, t4]])
 
+
+
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+
+#        self.mc.gyro_report()
         dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+
+        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+
+        plot_trinity(self.time, dv1.T)
+        plot_trinity(self.time, dv2.T)
+        plot_trinity(self.time, dv3.T)
+
         self.mc.gyro_report()
-        print '************'
         self.delta = 0.05
 
     def test_coeff(self):
-        self.skipTest('Work in progress')
+#        self.skipTest('Work in progress')
         is_failure = False
 
         print self.mc.gyro_model.keys()
@@ -163,7 +186,11 @@ class TestDieselCalibrator(unittest.TestCase):
                 if self.gyro_model[key] !=0.:
                     self.assertLess(np.abs(gyro_res), self.delta)
             except AssertionError:
-                print  'gyro[' + key + '] something wrong!'
+                print  'gyro[' + key + ']' ,
+                print  'test= ', self.mc.gyro_model[key], 'ref= ',self.gyro_model[key],
+
+                print ' delta = ', self.delta,
+                print ' tol =',  gyro_res
 
                 is_failure = True
 
@@ -172,7 +199,11 @@ class TestDieselCalibrator(unittest.TestCase):
                 if self.acc_model[key] !=0.:
                     self.assertLess(np.abs(acc_res), self.delta)
             except AssertionError:
-                print  'acc[' + key + '] something wrong!'
+                print  'acc[' + key + ']' ,
+                print  'test= ', self.mc.acc_model[key], 'ref= ',self.acc_model[key],
+
+                print ' delta = ', self.delta,
+                print ' tol =',  acc_res
                 is_failure = True
 
         # fail if any AssertionError occurred

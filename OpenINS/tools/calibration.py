@@ -19,7 +19,7 @@ from tools.profile import create_profile
 
 class IMUCalibration(object):
     """
-    Base class for IMU sensor calibrating methods.
+    Base class for IMU sensor calibrating methods.1qs
 
     In most cases IMU have 6 DoF and consists of two sensors triads:
     gyroscopes, accelerometers.
@@ -54,6 +54,9 @@ class IMUCalibration(object):
                          'xx':0., 'xy':0., 'xz':0.,
                          'yx':0., 'yy':0., 'yz':0.,
                          'zx':0., 'zy':0., 'zz':0.,}
+
+
+
     @abstractmethod
     def gyro_report(self):
         """
@@ -106,6 +109,7 @@ class DieselCalibrator(IMUCalibration):
         """
         super(DieselCalibrator, self).__init__(lat, lon, h)
 
+        # initial orientation for each set of rotation
         self.init_quat_set1 = euler2quat(0., 0., 0.)
         self.init_quat_set2 = euler2quat(-np.pi/2., -np.pi/2., 0.)
         self.init_quat_set3 = euler2quat(np.pi/2., 0., np.pi/2.)
@@ -126,7 +130,7 @@ class DieselCalibrator(IMUCalibration):
         self.acc3 = set3[:,3:6]
 
 
-    def integrate(self, gyro, acc):
+    def integrate(self, gyro1, acc1):
         """
         Solve navigation for position of calibration fixture.
         """
@@ -135,6 +139,7 @@ class DieselCalibrator(IMUCalibration):
         omega_b = np.dot(quat2dcm(self.quat).T, self.ipos.omega_n)
 
         # form matrix for gyro and acc errors models
+
         gyro_sfma = np.array([
             [self.gyro_model['xx'], self.gyro_model['xy'], self.gyro_model['xz']],
             [self.gyro_model['yx'], self.gyro_model['yy'], self.gyro_model['yz']],
@@ -153,9 +158,12 @@ class DieselCalibrator(IMUCalibration):
                              self.acc_model['y'],
                              self.acc_model['z']])
 
+
+
+
         # Compensate bias, ma and sf
-        gyro = np.dot(np.linalg.inv(gyro_sfma + np.eye(3)), gyro - gyro_bias)
-        acc = np.dot(np.linalg.inv(acc_sfma + np.eye(3)), acc - acc_bias)
+        gyro = np.dot(np.linalg.inv(gyro_sfma + np.eye(3)), gyro1 - gyro_bias*self.dt).T
+        acc = np.dot(np.linalg.inv(acc_sfma + np.eye(3)), acc1 - acc_bias).T
 
         # calc INS acceleration
         dv_n = np.dot(quat2dcm(self.quat), acc) - self._g_n
@@ -173,6 +181,16 @@ class DieselCalibrator(IMUCalibration):
         st, t1, t2, t3, t4 --> set2
         st, t1, t2, t3, t4 --> set3
         """
+        gyro_model = {'x':0., 'y':0., 'z':0.,
+                           'xx':0., 'xy':0., 'xz':0.,
+                           'yx':0., 'yy':0., 'yz':0.,
+                           'zx':0., 'zy':0., 'zz':0.,}
+
+        # acc parameters: bias and scalefactor, misalignment matrix
+        acc_model = {'x':0., 'y':0., 'z':0.,
+                      'xx':0., 'xy':0., 'xz':0.,
+                      'yx':0., 'yy':0., 'yz':0.,
+                      'zx':0., 'zy':0., 'zz':0.,}
 
         self.quat = self.init_quat_set1
         dvn1 = np.array(zip(*map(self.integrate, self.gyro1, self.acc1)))
@@ -184,15 +202,17 @@ class DieselCalibrator(IMUCalibration):
         dvn3 = np.array(zip(*map(self.integrate, self.gyro3, self.acc3)))
 
 
-
+        # coefficients: a - x channel, b - y channel
         a = np.eye(3)
         b = np.eye(3)
-#        c = np.eye(3)
+
         d = np.array([0., 0., 0.])
+        dr = np.array([0., 0., 0.])
 
 
         for i, dvn in enumerate([dvn1, dvn2, dvn3]):
 
+            # find difference between start and end of rotation: dV[T] - dV[0]
             r1 = np.mean(dvn[:, tbl[i][2]:tbl[i][2] + tbl[i][0]], axis=1) - \
                  np.mean(dvn[:, tbl[i][1]:tbl[i][1] + tbl[i][0]], axis=1)
             r2 = np.mean(dvn[:, tbl[i][3]:tbl[i][3] + tbl[i][0]], axis=1) - \
@@ -200,68 +220,88 @@ class DieselCalibrator(IMUCalibration):
             r3 = np.mean(dvn[:, tbl[i][4]:tbl[i][4] + tbl[i][0]], axis=1) - \
                  np.mean(dvn[:, tbl[i][3]:tbl[i][3] + tbl[i][0]], axis=1)
 
+            # sum of before start and after end of each rotation
+            # used to find accelerometer scalefactor
             d[i] = np.mean(dvn[2, tbl[i][2]:tbl[i][2] + tbl[i][0]], axis=0) + \
                    np.mean(dvn[2, tbl[i][1]:tbl[i][1] + tbl[i][0]], axis=0)
 
-#            print np.shape(dvn[tbl[i][2]:tbl[i][2] + tbl[i][0], :])
+            # used in polyfit function
+            # purpose of polyfit is to find velocity of acceleration projected on NED
+            # frame. Then this value used in gyro bias calculation. Proper
+            # way is to use mini Kalman filter in single channel, witch returns
+            # estimation of acceleration velocity and smooths output data.
+            # fo details see [1].
+            t = np.arange(0, len(dvn[0, tbl[i][4]:tbl[i][4] + tbl[i][0]])*self.dt, self.dt )
+            print np.shape(t)
+            print np.shape(dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]])
+
+            dr[i] = np.polyfit(t[:], dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]], 1)[0] -\
+                    np.polyfit(t[:], dvn[1, tbl[i][3]:tbl[i][3] + tbl[i][0]], 1)[0]
+
             for j, r in enumerate([r1, r2, r3]):
 
                 a[i, j] = r[0]
                 b[i, j] = r[1]
-                # vertical channel not used yet
-#                c[i, j] = r[2]
 
-         # Gyro scale factors
-        self.gyro_model['xx'] += (b[0, 0] + b[0, 1]) / (- 2. * np.pi * self.ipos.gravity)
-        self.gyro_model['yy'] += (b[1, 0] + b[1, 1]) / (- 2. * np.pi * self.ipos.gravity)
-        self.gyro_model['zz'] += (b[2, 0] + b[2, 1]) / (- 2. * np.pi * self.ipos.gravity)
+        # Gyro scale factors
+        gyro_model['xx'] = (b[0, 0] + b[0, 1]) / (- 2. * np.pi * self.ipos.gravity)
+        gyro_model['yy'] = (b[1, 0] + b[1, 1]) / (- 2. * np.pi * self.ipos.gravity)
+        gyro_model['zz'] = (b[2, 0] + b[2, 1]) / (- 2. * np.pi * self.ipos.gravity)
+
+        # Gyro bias
+        gyro_model['x'] = dr[0]/(2.*self.ipos.gravity)
+        gyro_model['y'] = dr[1]/(2.*self.ipos.gravity)
+        gyro_model['z'] = dr[2]/(2.*self.ipos.gravity)
 
         # Acc bias
-        self.acc_model['x'] += (b[2, 1] - b[2, 0]) / 4.
-        self.acc_model['y'] += (b[0, 1] - b[0, 0]) / 4.
-        self.acc_model['z'] += (b[1, 1] - b[1, 0]) / 4.
+        acc_model['x'] = (b[2, 1] - b[2, 0]) / 4.
+        acc_model['y'] = (b[0, 1] - b[0, 0]) / 4.
+        acc_model['z'] = (b[1, 1] - b[1, 0]) / 4.
 
 
         # Acc scale factors
-        self.acc_model['xx'] += (d[1]) / (2. * self.ipos.gravity)
-        self.acc_model['yy'] += (d[2]) / (2. * self.ipos.gravity)
-        self.acc_model['zz'] += (d[0]) / (2. * self.ipos.gravity)
+        acc_model['xx'] = (d[1]) / (2. * self.ipos.gravity)
+        acc_model['yy'] = (d[2]) / (2. * self.ipos.gravity)
+        acc_model['zz'] = (d[0]) / (2. * self.ipos.gravity)
 
         # Gyro misalignment
 
-        self.gyro_model['xy'] += (a[1, 0])/(-2.*self.ipos.gravity)
+        gyro_model['xy'] = (a[1, 0])/(-2.*self.ipos.gravity)
 
-        self.gyro_model['xz'] += (a[0, 2] + 2.*self.acc_model['x'])/\
+        gyro_model['xz'] = (a[0, 2] + 2.*acc_model['x'])/\
                                  (2.*self.ipos.gravity)
-        self.gyro_model['yx'] += (a[1, 2] + 2.*self.acc_model['z'])/\
+        gyro_model['yx'] = (a[1, 2] + 2.*acc_model['y'])/\
                                  (2.*self.ipos.gravity)
-        self.gyro_model['yz'] += (b[0, 2] + 2.*self.acc_model['y'])/\
+        gyro_model['yz'] = (b[0, 2] + 2.*acc_model['y'])/\
                                  (2.*self.ipos.gravity)
-        self.gyro_model['zx'] += (a[0, 0])/(-2.*self.ipos.gravity)
+        gyro_model['zx'] = (a[0, 0])/(-2.*self.ipos.gravity)
 
 
 
         # Acc misalignment, next assumed as reference axis
-        self.acc_model['xy'] = 0.
-        self.acc_model['xz'] = 0.
-        self.acc_model['xy'] = 0.
+        acc_model['yx'] = 0.
+        acc_model['yz'] = 0.
+        acc_model['xz'] = 0.
 
 
-        self.acc_model['zx'] = -(b[1, 2] + 2*self.acc_model['z'])/\
-                              (2*self.ipos.gravity) + self.gyro_model['zx']
-        self.acc_model['yx'] = -(b[2, 2] + 2*self.acc_model['x'])/\
-                              (2*self.ipos.gravity) + self.gyro_model['xy']
+        acc_model['zx'] = -(b[1, 2] + 2.*acc_model['z'])/\
+                              (2*self.ipos.gravity) + gyro_model['zx']
+        acc_model['xy'] = -(b[2, 2] + 2.*acc_model['x'])/\
+                              (2.*self.ipos.gravity) + gyro_model['xy']
 
-        self.acc_model['zy'] = -a[2, 0]/(2*self.ipos.gravity) -\
-                              self.gyro_model['yz']
+        acc_model['zy'] = -a[2, 0]/(2*self.ipos.gravity) -\
+                              gyro_model['yz']
+
+        gyro_model['zy'] =  (a[2, 2] + 2.*acc_model['z'])/\
+                              (2.*self.ipos.gravity) + acc_model['zy']
 
 
-        self.gyro_model['zy'] += (b[2, 2] + 2*self.acc_model['z'])/\
-                                 -(2*self.ipos.gravity) + self.acc_model['zy']
-
-
-#        self.gyro_report()
-
+        # adds two dictionaries
+        self.gyro_model = dict( (n, gyro_model.get(n, 0)+self.gyro_model.get(n, 0))
+        for n in set(gyro_model)|set(self.gyro_model) )
+        self.acc_model = dict( (n, acc_model.get(n, 0)+self.acc_model.get(n, 0))
+        for n in set(acc_model)|set(self.acc_model) )
+        print self.gyro_model
 
         return dvn1, dvn2, dvn3
     def gyro_report(self):
