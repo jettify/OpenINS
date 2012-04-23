@@ -164,9 +164,11 @@ class RotationSequence(object):
             if sq.is_right_time(time):
                 rate = sq.rate(time)
                 dcm = sq.orientation_dcm(time)
-
                 return dcm, rate
-
+            elif sq is self.sequence[-1]:
+                rate = sq.rate(time)
+                dcm = sq.orientation_dcm(time)
+                return dcm, rate
 
 class BasicCalibTraj(CalibTrajectory):
     """
