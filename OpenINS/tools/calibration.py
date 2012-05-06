@@ -11,7 +11,7 @@ import numpy as np
 
 from environnement.datum import InitPosition
 from orientationmath.orientation import quat_prop_4o, quat2dcm, euler2quat, dcm2euler
-from orientationmath.orientation import quat_prop_1o
+from orientationmath.orientation import quat_prop
 from visualisation.plotter import plot_trinity
 
 from tools.profile import create_profile
@@ -55,6 +55,15 @@ class IMUCalibration(object):
                          'yx':0., 'yy':0., 'yz':0.,
                          'zx':0., 'zy':0., 'zz':0.,}
 
+    def set_gravity(self, g):
+        """
+        Set gravity magnitude
+
+        Parameters
+        ----------
+        g: float, m/s^2, local gravity
+        """
+        self._g_n = np.array([0., 0., g ])
 
 
     @abstractmethod
@@ -207,8 +216,8 @@ class DieselCalibrator(IMUCalibration):
         b = np.eye(3)
 
         d = np.array([0., 0., 0.])
-        dr = np.array([0., 0., 0.])
-
+        drx = np.array([0., 0., 0.])
+        dry = np.array([0., 0., 0.])
 
         for i, dvn in enumerate([dvn1, dvn2, dvn3]):
 
@@ -231,12 +240,21 @@ class DieselCalibrator(IMUCalibration):
             # way is to use mini Kalman filter in single channel, witch returns
             # estimation of acceleration velocity and smooths output data.
             # fo details see [1].
-            t = np.arange(0, len(dvn[0, tbl[i][4]:tbl[i][4] + tbl[i][0]])*self.dt, self.dt )
+            t = np.arange(0, len(dvn[0, tbl[i][4]:tbl[i][4] + tbl[i][0]])*self.dt, self.dt )[:-1]
             print np.shape(t)
+            print len(dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]])
             print np.shape(dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]])
+#
 
-            dr[i] = np.polyfit(t[:], dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]], 1)[0] -\
+#            t = np.empty_like(dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]])
+
+
+
+            dry[i] = np.polyfit(t[:], dvn[1, tbl[i][4]:tbl[i][4] + tbl[i][0]], 1)[0] -\
                     np.polyfit(t[:], dvn[1, tbl[i][3]:tbl[i][3] + tbl[i][0]], 1)[0]
+
+            drx[i] = np.polyfit(t[:], dvn[0, tbl[i][4]:tbl[i][4] + tbl[i][0]], 1)[0] -\
+                     np.polyfit(t[:], dvn[0, tbl[i][3]:tbl[i][3] + tbl[i][0]], 1)[0]
 
             for j, r in enumerate([r1, r2, r3]):
 
@@ -249,9 +267,14 @@ class DieselCalibrator(IMUCalibration):
         gyro_model['zz'] = (b[2, 0] + b[2, 1]) / (- 2. * np.pi * self.ipos.gravity)
 
         # Gyro bias
-        gyro_model['x'] = dr[0]/(2.*self.ipos.gravity)
-        gyro_model['y'] = dr[1]/(2.*self.ipos.gravity)
-        gyro_model['z'] = dr[2]/(2.*self.ipos.gravity)
+        gyro_model['x'] = dry[0]/(2.*self.ipos.gravity)
+        gyro_model['y'] = dry[1]/(2.*self.ipos.gravity)
+        gyro_model['z'] = dry[2]/(2.*self.ipos.gravity)
+
+        gyro_model['x'] = drx[0]/(2.*self.ipos.gravity)
+        gyro_model['y'] = drx[1]/(2.*self.ipos.gravity)
+        gyro_model['z'] = drx[2]/(2.*self.ipos.gravity)
+
 
         # Acc bias
         acc_model['x'] = (b[2, 1] - b[2, 0]) / 4.
@@ -304,6 +327,7 @@ class DieselCalibrator(IMUCalibration):
         print self.gyro_model
 
         return dvn1, dvn2, dvn3
+
     def gyro_report(self):
         """
         Report about calibration coefficients of IMU.
@@ -311,23 +335,10 @@ class DieselCalibrator(IMUCalibration):
         Coefficients include biases, scale factors, misalignment of
         gyros and accelerometers.
         """
-#        print 'g sf1', self.gyro_sfma['xx']
-#        print 'g sf2', self.gyro_sfma['yy']
-#        print 'g sf3', self.gyro_sfma['zz']
-
-        print '*****************************'
-        print 'a b1=', self.acc_model['x']
-        print 'a b2=', self.acc_model['y']
-        print 'a b3=', self.acc_model['z']
         print '*****************************'
         print 'g b1=', self.gyro_model['x']
         print 'g b2=', self.gyro_model['y']
         print 'g b3=', self.gyro_model['z']
-
-        print '*****************************'
-        print 'a xx', self.acc_model['xx']
-        print 'a yy', self.acc_model['yy']
-        print 'a zz', self.acc_model['zz']
         print '*****************************'
         print 'g xx', self.gyro_model['xx']
         print 'g yy', self.gyro_model['yy']
@@ -339,14 +350,6 @@ class DieselCalibrator(IMUCalibration):
         print 'g yz', self.gyro_model['yz']
         print 'g zx', self.gyro_model['zx']
         print 'g zy', self.gyro_model['zy']
-        print '*****************************'
-        print 'a xy', self.acc_model['xy']
-        print 'a xz', self.acc_model['xz']
-        print 'a yx', self.acc_model['yx']
-        print 'a yz', self.acc_model['yz']
-        print 'a zx', self.acc_model['zx']
-        print 'a zy', self.acc_model['zy']
-
 
 
     def acc_report(self):
@@ -356,7 +359,21 @@ class DieselCalibrator(IMUCalibration):
         Coefficients include biases, scale factors, misalignment of
         gyros and accelerometers.
         """
-
+        print '*****************************'
+        print 'a xy', self.acc_model['xy']
+        print 'a xz', self.acc_model['xz']
+        print 'a yx', self.acc_model['yx']
+        print 'a yz', self.acc_model['yz']
+        print 'a zx', self.acc_model['zx']
+        print 'a zy', self.acc_model['zy']
+        print '*****************************'
+        print 'a xx', self.acc_model['xx']
+        print 'a yy', self.acc_model['yy']
+        print 'a zz', self.acc_model['zz']
+        print '*****************************'
+        print 'a b1=', self.acc_model['x']
+        print 'a b2=', self.acc_model['y']
+        print 'a b3=', self.acc_model['z']
 
 if __name__ == '__main__':
     pass
