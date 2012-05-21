@@ -12,8 +12,8 @@ class TestDieselCalibrator(unittest.TestCase):
 
     def setUp(self):
 
-        self.turn_time = 100.
-        self.stady_time = 100.
+        self.turn_time = 5
+        self.stady_time = 20
         self.dt = 0.05
 
 
@@ -29,6 +29,12 @@ class TestDieselCalibrator(unittest.TestCase):
         self.rs1.add(RotateIMU(self.turn_time, 0., 0., np.pi))
         self.rs1.add(RotateIMU(self.stady_time, 0., 0., 0.))
 
+#        self.rs1.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+#        self.rs1.add(RotateIMU(15.*self.stady_time, 0., 0., 0.))
+#        self.rs1.add(RotateIMU(self.turn_time, 0., 0., np.pi))
+#        self.rs1.add(RotateIMU(15.*self.stady_time, 0., 0., 0.))
+
+
         #Rotation set 2
         self.rs2 = RotationSequence()
         self.rs2.set_init_orientation( -np.pi/2., -np.pi/2,  0. )
@@ -40,6 +46,13 @@ class TestDieselCalibrator(unittest.TestCase):
         self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
         self.rs2.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
         self.rs2.add(RotateIMU(self.stady_time, 0., 0., 0.))
+
+#        self.rs2.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+#        self.rs2.add(RotateIMU(15.*self.stady_time, 0., 0., 0.))
+#        self.rs2.add(RotateIMU(self.turn_time, np.pi, 0., 0.))
+#        self.rs2.add(RotateIMU(15*self.stady_time, 0., 0., 0.))
+
+
 
         #Rotation set 3
         self.rs3 = RotationSequence()
@@ -53,14 +66,17 @@ class TestDieselCalibrator(unittest.TestCase):
         self.rs3.add(RotateIMU(self.turn_time, 0., np.pi, 0.))
         self.rs3.add(RotateIMU(self.stady_time, 0., 0., 0.))
 
-
+#        self.rs3.add(RotateIMU(self.turn_time, 0., np.pi, 0.))
+#        self.rs3.add(RotateIMU(15*self.stady_time, 0., 0., 0.))
+#        self.rs3.add(RotateIMU(self.turn_time, 0., np.pi, 0.))
+#        self.rs3.add(RotateIMU(15*self.stady_time, 0., 0., 0.))
 
         self.fixture1 = BasicCalibTraj(self.rs1)
         self.fixture2 = BasicCalibTraj(self.rs2)
         self.fixture3 = BasicCalibTraj(self.rs3)
 
 
-        self.time = np.arange(0., 700., self.dt)
+        self.time = np.arange(0., 150., self.dt)
 
         to_rads = (np.pi/180.)/3600.
         shape = len(self.time)
@@ -78,9 +94,9 @@ class TestDieselCalibrator(unittest.TestCase):
         gyros2 = np.array(map(self.fixture2.gyros, self.time)) + gyro_rand2
         gyros3 = np.array(map(self.fixture3.gyros, self.time)) + gyro_rand3
 
-        accs1 = np.array(map(self.fixture1.accs, self.time)) + acc_rand1
-        accs2 = np.array(map(self.fixture2.accs, self.time)) + acc_rand2
-        accs3 = np.array(map(self.fixture3.accs, self.time)) + acc_rand3
+        accs1 = np.array(map(self.fixture1.accs, self.time)) + 0*acc_rand1
+        accs2 = np.array(map(self.fixture2.accs, self.time)) + 0*acc_rand2
+        accs3 = np.array(map(self.fixture3.accs, self.time)) + 0*acc_rand3
 
 
         self.gyro_model = {'x': 3e-07, 'y':5e-07, 'z':7e-07,
@@ -129,14 +145,15 @@ class TestDieselCalibrator(unittest.TestCase):
         self.mc = DieselCalibrator()
         self.mc.dt = self.dt
         self.mc.time = self.time
+
         self.mc.load_data(self.data_set1, self.data_set2, self.data_set3)
 
 
-        t0 = 100/self.dt -self.dt
-        t1 = 0/self.dt
-        t2 = 200/self.dt
-        t3 = 400/self.dt
-        t4 = 600/self.dt
+        t0 = 20./self.dt -self.dt
+        t1 = 0./self.dt
+        t2 = (20. + 5.)/self.dt
+        t3 = (20. + 5. + 20. + 5.)/self.dt
+        t4 = (20. + 5. + 20. + 5. + 20. + 5.)/self.dt
 
 
         # schedule of rotations
@@ -152,7 +169,7 @@ class TestDieselCalibrator(unittest.TestCase):
 #        self.mc.gyro_report()
         dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
 
-        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
+#        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
 #        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
 #        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)
 #        dv1, dv2, dv3 = self.mc.calc_coefficient(tbl)

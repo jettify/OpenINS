@@ -15,10 +15,7 @@ class RotateIMUTest(unittest.TestCase):
 
     def setUp(self):
         self.time = 20
-
-
         self.a = np.array([np.pi, 0., 0.])
-
         self.move = RotateIMU(self.time, self.a[0], self.a[1], self.a[2])
         self.test_time = 10
 
@@ -69,8 +66,6 @@ class RotationSequenceTest(unittest.TestCase):
         self.rot_5 = RotateIMU(self.stady_time, 0., 0., 0.)
         self.rot_6 = RotateIMU(self.turn_time, 0., 0., np.pi)
         self.rot_7 = RotateIMU(self.stady_time, 0., 0., 0.)
-
-
 
         self.rs = RotationSequence()
         self.rs.add(self.rot_1)
