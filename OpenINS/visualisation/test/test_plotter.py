@@ -4,11 +4,12 @@ Test plotting functions.
 """
 import numpy as np
 import unittest
-from time import sleep
 
 from visualisation.plotter import *
 from tools.analysis import avar
+from trajectory.navtrajectory import NavTrajectory
 
+#@unittest.skip
 class PlotterTest(unittest.TestCase):
     """
     Plotter test container.
@@ -53,6 +54,27 @@ class PlotterTest(unittest.TestCase):
         """
         Basic test 3 var plotter
         """
-
         plot_trinity(self.time,np.array([self.val1, self.val2, self.val3]).T)
 
+
+class PlotterINSStateTest(unittest.TestCase):
+    """
+    Plotter test container.
+    """
+    # Setup flight profile
+    pd = np.array([[55.0 * (np.pi / 180.0), 0.0, 0.004, 2. * np.pi / 600.0, 0.],
+        [30.0 * (np.pi / 180.0), 0.00004, 0, 2. * np.pi / 600.0, 0.],
+        [5000.0, 0.0, -5000.0, 2. * np.pi / 600.0, 0.]])
+
+    profile = NavTrajectory(pd)
+
+    # define sample time and time vector
+    dt = 1.
+    time = np.arange(0., 1000., dt)
+
+
+    def test_plot_ins_state(self):
+        # compute all state for given time
+        state = np.array([self.profile.state(t) for t in self.time])
+        # plot data
+        plot_ins_state(self.time, state)
