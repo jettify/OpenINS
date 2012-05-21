@@ -288,6 +288,14 @@ def skew(v):
 
     return skew_sym
 
+def rate2quat(rate):
+    """
+    Simple make quaternion from rate vector.
+
+    Just adds zero as real part of quaternion:
+    w_q = [0 w]
+    """
+    return np.concatenate((np.array([0.]), rate))
 
 def quat_mult(q1,q2):
     """
@@ -315,7 +323,7 @@ def quat_mult(q1,q2):
     return np.dot(A,q2)
 
 
-def dcm_prop(dcm_nb_old,angular_vel):
+def dcm_prop(dcm_bn_old,angular_vel):
     """
     Update the direction cosine matrix for body motion (relative to inertial space).
     The function is thus acting upon the strapdown gyro outputs.
@@ -342,11 +350,11 @@ def dcm_prop(dcm_nb_old,angular_vel):
         B = np.eye(3) + (sin(magnitude) / magnitude) * skw +\
             ((1 - cos(magnitude)) / ((magnitude ** 2))) * np.dot(skw,skw)
 
-    dcm_nb_new = np.dot(dcm_nb_old,B)
+    dcm_bn_new = np.dot(dcm_bn_old,B)
 
-    return dcm_nb_new
+    return dcm_bn_new
 
-def quat_prop_1o(q,angular_vel):
+def quat_prop(q,angular_vel):
     """
     Update the quaternion for body motion (relative to inertial space).
     The function is thus acting upon the strapdown gyro outputs.
