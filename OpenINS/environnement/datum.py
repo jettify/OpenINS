@@ -3,6 +3,11 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 
 from tools.documentation import  copy_method_doc
 
+from orientationmath.orientation import dcm2roll
+from orientationmath.orientation import dcm2pitch
+from orientationmath.orientation import dcm2yaw
+from orientationmath.orientation import euler2dcm
+
 class EarthDatum(object):
     """
     Init and store data concerned Earth model.
@@ -76,21 +81,15 @@ class EarthDatum(object):
 
         Parameters
         ----------
-        phi: rad
-            geodedic latitude
-        dphi:
-            derivative of geodedic latitude ('latitude velocity')
+        phi: rad, geodesic latitude
+        dphi: derivative of geodesic latitude ('latitude velocity')
 
         Returns
         -------
-        RE: m
-            transverse radius of curvature
-        RN: m
-            meridian radius of curvature
-        dRN:
-            derivative of meridian radius of curvature
-        dRE:
-            derivative of transverse radius of curvature
+        RE: m, transverse radius of curvature
+        RN: m, meridian radius of curvature
+        dRN: derivative of meridian radius of curvature
+        dRE: derivative of transverse radius of curvature
         """
 
     @property
@@ -174,6 +173,13 @@ class EarthBase(EarthDatum):
     def curvature(self, phi):
         """
         Curvature for WGS84 Datum.
+
+        Returns
+        -------
+        RE: m
+            transverse radius of curvature
+        RN: m
+            meridian radius of curvature
 
         Reference
         ---------
@@ -272,11 +278,37 @@ class InitPosition(object):
         # Earth angular speed projected to NED frame
         self._omega_n = np.array([np.cos(self._latitude), 0.,
                                   -np.sin(self._latitude)])*self.datum.rate
+
         # Initial orientation
-        # TODO: delete or not delete?
-        self._roll = 0.0
-        self._pitch = 0.0
-        self._yaw = 0.0
+        self._dcmbn = np.eye(3)
+
+    @property
+    def roll(self):
+        """
+        Returns initial roll.
+        """
+        return dcm2roll(self._dcmbn)
+
+    @property
+    def pitch(self):
+        """
+        Returns initial pitch.
+        """
+        return dcm2pitch(self._dcmbn)
+
+    @property
+    def yaw(self):
+        """
+        Returns initial pitch.
+        """
+        return dcm2yaw(self._dcmbn)
+
+    def set_orientation(self, roll, pitch, yaw):
+        """
+        Set initial orientation.
+        """
+        self._dcmbn = euler2dcm(roll, pitch, yaw)
+
 
     @property
     def gravity(self):
