@@ -14,3 +14,7 @@
 .pydevproject
 .settings
 .idea
+/OpenINS/trajectory/build/temp.linux-x86_64-2.7/navtrajectory_opt.o
+/OpenINS/trajectory/navtrajectory_opt.so
+/OpenINS/trajectory/navtrajectory_opt.c
+
