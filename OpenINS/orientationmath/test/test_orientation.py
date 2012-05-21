@@ -144,6 +144,15 @@ class Dcm2QuaternionTest(unittest.TestCase):
             for j in [0,1,2]:
                 self.assertAlmostEqual(test_skew[i,j],ref_skew[i,j],places=12)
 
+    def test_rate2quat(self):
+        """
+
+        """
+        a = np.array([1., 2., 3.])
+        ref_a_q = np.array([0., 1., 2., 3.])
+        a_q = rate2quat(a)
+        assert np.all(a_q==ref_a_q)
+
 
     def test_quat_mult(self):
         """
@@ -172,7 +181,7 @@ class Dcm2QuaternionTest(unittest.TestCase):
         """
         q = np.array([refq1, refq2, refq3, refq4])
         gyro_output = np.array([gyro_rrate, gyro_prate, gyro_yrate])
-        testquat = quat_prop_1o(q, gyro_output)
+        testquat = quat_prop(q, gyro_output)
 
         self.assertAlmostEqual(testquat[0], refupdq1, places=12)
         self.assertAlmostEqual(testquat[1], refupdq2, places=12)
