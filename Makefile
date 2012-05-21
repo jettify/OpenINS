@@ -13,6 +13,9 @@ default:
 	@echo "This Makefile is only for building documentation and running tests."
 	@echo "To build and install OpenINS, run:"
 
+c:
+	cython `find . -name \*.pyx`.
+
 sphinx:
 	cd docs; sphinx-build -b html . build/html/
 
