@@ -194,9 +194,9 @@ class SimpleINSComputer(INSComputer):
 
 #        dq = 0.5*quat_mult(wn_in_q, q_n_1)
 
-        q = quat_prop(q_n_1, inc_angle - (wn_en + wn_ie)*self.dt)
+#        q = quat_prop(q_n_1, inc_angle - (wn_en + wn_ie)*self.dt)
 
-#        q = self.att_integrator(dq, self.dt)
+        q = self.att_integrator(dq, self.dt)
         return  q
 
     def _integrate_velocity(self, inc_vel):

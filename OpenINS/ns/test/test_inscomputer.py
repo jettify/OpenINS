@@ -1,7 +1,6 @@
 """
 Test for inscomputer module
 """
-
 import numpy as np
 import unittest
 import pylab
@@ -33,11 +32,9 @@ class ComprehensiveTest(unittest.TestCase):
 
         self.pf = NavTrajectoryOpt()
 #        self.pf = NavTrajectory(pd)
-        self.dt = 0.1
+        self.dt = 0.005
         self.ins = SimpleINSComputer()
         self.ins.dt = self.dt
-
-
 
         init_state = self.pf.init_state()
         self.ins.set_state(init_state)
@@ -49,9 +46,9 @@ class ComprehensiveTest(unittest.TestCase):
         """
         Test position integration of inscomputer.
 
-        We just integrate position, velocity in INS state replaced by ideal one. Other
-        variables in state vector is not changed coz they do not influence on position
-        integration.
+        We just integrate position, velocity in INS state replaced by ideal 
+        one. Other variables in state vector is not changed coz they do not 
+        influence on position integration.
         """
         self.skipTest('temp')
         test_pos = np.empty
@@ -161,7 +158,7 @@ class ComprehensiveTest(unittest.TestCase):
         """
         Test full functional system.
         """
-        self.skipTest('temp')
+        # self.skipTest('temp')
         test_state = np.array([self.ins(self.pf.gyros(t), self.pf.accs(t))
                       for t in self.time])
         ref_state = np.array([self.pf.state(t) for t in self.time])
@@ -241,3 +238,7 @@ class ComprehensiveTest(unittest.TestCase):
 #        np.testing.assert_almost_equal(acc[1:,0], tru_an[1:], decimal=4)
 #        np.testing.assert_almost_equal(acc[1:,1], tru_ae[1:], decimal=4)
 #        np.testing.assert_almost_equal(acc[1:,2], tru_ad[1:], decimal=4)
+
+if __name__ == '__main__':
+    unittest.main()
+
