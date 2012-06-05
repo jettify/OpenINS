@@ -73,35 +73,90 @@ class SimpsonRule(Integrator):
         """
 
         """
-        super(SimpsonRule, self).__init__(init_value)
+
+        self._accumulator_1 = copy(init_value)
+        self._accumulator_2 = copy(init_value)
+
         self._prev_value_1 = None
         self._prev_value_2 = None
-        self.a2 =0.
+
+        self.flag = True
+
+        self.rez = 0.
+
     def __call__(self, sample_value, dt):
         """
 
         """
+        if self.flag:
 
-        if self._prev_value_1 is not None and self._prev_value_2 is not None:
-            self._accumulator += dt * (self._prev_value_2 +
-                                       4.*self._prev_value_1 + sample_value) / 3.
-            self._prev_value_2 =  copy(sample_value)
-            self._prev_value_1 =  None
-            self.a2 =0.
-        else:
-            if self._prev_value_2 is not None:
-
+            if  self._prev_value_1 is None:
                 self._prev_value_1 =  copy(sample_value)
-                return copy(self._accumulator +self.a2 + dt * (self._prev_value_2 + sample_value) / 2.)
-            else:
-                self._prev_value_2 =  copy(sample_value)
-                self.a2 = copy(self._accumulator + sample_value * dt)
-                return copy(self._accumulator + sample_value * dt)
 
-#        self._prev_value_2 =  copy(self._prev_value_1)
-#        self._prev_value_1 =  copy(sample_value)
+                self.rez =  self._accumulator_1 + sample_value * dt
+                self._accumulator_1 = copy(self.rez)
+                self._accumulator_2 = copy(self.rez)
+                return copy(self.rez)
 
 
+            if self._prev_value_2 is None:
+                self.rez += dt * (self._prev_value_1 + sample_value) / 2.
 
-        return copy(self._accumulator)
+                self._accumulator_1 = copy(self.rez)
+
+                self.swich(sample_value)
+                self.flag = False
+                return self.rez
+
+            self._accumulator_1 += (dt * (self._prev_value_2 + \
+                                        4.*self._prev_value_1 + sample_value) / 3.)
+
+            self.swich(sample_value)
+
+            self.flag = False
+            return copy(self._accumulator_1)
+
+        else:
+
+
+
+
+            self._accumulator_2 += dt * (self._prev_value_2 +
+                                        4.*self._prev_value_1 + sample_value) / 3.
+
+            self.swich(sample_value)
+
+            self.flag = True
+            return copy(self._accumulator_2)
+
+
+    def swich(self, sample_value):
+        self._prev_value_2 =  copy(self._prev_value_1)
+        self._prev_value_1 =  copy(sample_value)
+
+
+
+#
+#        if self._prev_value_1 is not None and self._prev_value_2 is not None:
+#            self._accumulator += dt * (self._prev_value_2 +
+#                                       4.*self._prev_value_1 + sample_value) / 3.
+#            self._prev_value_2 =  copy(sample_value)
+#            self._prev_value_1 =  None
+#            self.a2 =0.
+#        else:
+#            if self._prev_value_2 is not None:
+#
+#                self._prev_value_1 =  copy(sample_value)
+#                return copy(self._accumulator +self.a2 + dt * (self._prev_value_2 + sample_value) / 2.)
+#            else:
+#                self._prev_value_2 =  copy(sample_value)
+#                self.a2 = copy(self._accumulator + sample_value * dt)
+#                return copy(self._accumulator + sample_value * dt)
+#
+##        self._prev_value_2 =  copy(self._prev_value_1)
+##        self._prev_value_1 =  copy(sample_value)
+
+
+
+#        return copy(self._accumulator)
 
