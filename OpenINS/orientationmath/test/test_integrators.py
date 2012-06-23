@@ -8,7 +8,10 @@ import numpy as np
 import unittest
 import orientationmath.integrators
 from testing.inspection import get_implementations
+from orientationmath.integrators import SimpsonRule
+from orientationmath.integrators import TrapeziumRule
 
+from visualisation.plotter import plot_basic
 
 x = np.arange(0., 5, 0.0005)
 dt = x[1]-x[0]
@@ -54,8 +57,35 @@ class IntegratorTest(unittest.TestCase):
         for  method, tol in zip (methods, tols):
             print method
             for function, integral in zip (functions, integrals):
+                print integral
                 test_int, ref_int = check_integral(method, function, integral)
                 for test, ref in zip (test_int, ref_int):
                     self.assertAlmostEqual(test, ref, places=tol)
 
 
+
+class CheckSimpson(unittest.TestCase):
+    """
+
+    """
+    def test_integral(self):
+
+        func = np.cos
+        integ = np.sin
+
+        init_v = integ(0.)
+
+        integrator = TrapeziumRule(init_v)
+#        integrator = SimpsonRule(init_v)
+
+
+        x = np.arange(0., 5, 0.01)
+        dt = x[1]-x[0]
+        estimated_integral = np.empty_like(x)
+        real_integral = integ(x)
+
+        estimated_integral[0] = init_v
+        for i, s in enumerate(x[1:]):
+            estimated_integral[i+1] = integrator(func(s), dt=dt)
+
+        plot_basic(x, estimated_integral-real_integral)

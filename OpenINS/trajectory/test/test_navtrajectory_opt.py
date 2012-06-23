@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from trajectory.navtrajectory_opt import NavTrajectoryOpt
+from trajectory.navtrajectory_opt2 import NavTrajectoryOpt
 from trajectory.navtrajectory import NavTrajectory
 from visualisation.plotter import plot_compare_states_diff, plot_compare_states
 
@@ -18,16 +18,16 @@ class NavTrajectoryOptTest(unittest.TestCase):
     pf_reg = NavTrajectory()
 
     dt = 1.
-    time = np.arange(0., 1000.,  dt)
+    time = np.arange(0., 100.,  dt)
 
     def test_functions(self):
         ref_state = np.array([self.pf_reg.state(t) for t in self.time])
         test_state = np.array([self.pf_opt.state(t) for t in self.time])
 
-        # lgnd = ['phi', 'lam', 'h', 'vn', 've', 'vd', 'an', 'ae', 'ad',
-        #         'q0', 'q1', 'q2', 'q3']
-        # plot_compare_states(self.time, test_state, ref_state, lgnd)
-        # plot_compare_states_diff(self.time, test_state, ref_state, lgnd)
+        lgnd = ['phi', 'lam', 'h', 'vn', 've', 'vd', 'an', 'ae', 'ad',
+                 'q0', 'q1', 'q2', 'q3']
+        plot_compare_states(self.time, test_state, ref_state, lgnd)
+        plot_compare_states_diff(self.time, test_state, ref_state, lgnd)
 
         np.testing.assert_almost_equal(test_state, ref_state, decimal=10)
 
@@ -49,8 +49,8 @@ class NavTrajectoryOptTest(unittest.TestCase):
 
         ## uncomment lines if you to check the plot and diff between
         ## test and ref values
-        # lgnd = ['ax', 'ay', 'az']
-        # plot_compare_states(self.time, test_accs, ref_accs, lgnd)
-        # plot_compare_states_diff(self.time, test_accs, ref_accs, lgnd)
+        lgnd = ['ax', 'ay', 'az']
+        plot_compare_states(self.time, test_accs, ref_accs, lgnd)
+        plot_compare_states_diff(self.time, test_accs, ref_accs, lgnd)
 
         np.testing.assert_almost_equal(test_accs, ref_accs, decimal=10)

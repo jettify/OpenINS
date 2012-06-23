@@ -4,6 +4,7 @@ cdef extern from "math.h":
     double atan(double theta)
     double acos (double theta)
     double asin (double theta)
+
 import numpy as np
 from scipy.integrate import romb, romberg
 
@@ -13,7 +14,7 @@ cdef double pi = 3.141592653589793
 cdef double k11 = 55*pi/180.0
 cdef double k12 = 0.0
 cdef double k13 = 0.004
-cdef double k14 = 2*pi/600.0 
+cdef double k14 = 2*pi/600.0
 cdef double k15 = 0.0
 
 cdef double k21 = 30.0*pi/180
@@ -31,8 +32,9 @@ cdef double k35 = 0.0
 cdef double kg = 0.01
 cdef double datum_rate = 7.292115E-5
 cdef double datum_a = 6378137.0
-cdef double datum_e2 = 0.00669438000426  
+cdef double datum_e2 = 0.00669438000426
 cdef double ge =398600.44*(10**9)/(datum_a**2)
+
 
 cdef double phi(double t):
     return k11 + k12*t + k13*sin(k15 + k14*t)
@@ -138,6 +140,7 @@ def euler2quat(double gamma, double theta, double psi):
     return np.array([q0, q1, q2, q3])
 
 cdef class NavTrajectoryOpt:
+
     def phi(self, double time):
         return phi(time)
     def lam(self, double time):

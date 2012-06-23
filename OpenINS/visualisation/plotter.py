@@ -8,6 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import time as timelib
 import numpy as np
+from orientationmath.orientation import quat2dcm
+from orientationmath.orientation import dcm2euler
 
 def plot_avar(time, sigma):
     """
@@ -247,3 +249,22 @@ def plot_compare_states_diff(time, test_state, ref_state, lgnd = None):
             legend = [lgnd[i] + '_test', lgnd[i] + '_ref']
         plot_basic(time, np.array([test_state[:,i]-ref_state[:,i]]).T, legend )
 
+
+
+def plot_compare_quat2euler(time, test_state, ref_state, lgnd = None):
+    """
+    Compare two states
+    """
+
+    test_state = np.rad2deg(np.array([dcm2euler(quat2dcm(q)) for q in test_state]))
+    ref_state =  np.rad2deg(np.array([dcm2euler(quat2dcm(q)) for q in ref_state]))
+
+    assert len(test_state) == len(ref_state)
+
+
+    row, cols = np.shape(test_state)
+    legend = None
+    for i in range(0, cols):
+        if lgnd != None:
+            legend = [lgnd[i] + '_test', lgnd[i] + '_ref']
+        plot_basic(time, np.array([test_state[:,i]-ref_state[:,i]]).T, legend )

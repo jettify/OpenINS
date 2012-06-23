@@ -10,7 +10,6 @@ from ns.navsystem import NavSystem
 from orientationmath.orientation import skew
 from orientationmath.orientation import quat_prop
 from orientationmath.integrators import TrapeziumRule
-from orientationmath.integrators import SimpsonRule
 from environnement.datum import WGS84
 from orientationmath.orientation import quat_mult
 from orientationmath.orientation import quat2dcm
@@ -36,7 +35,7 @@ class INSComputer(NavSystem):
         # initial quaternion
 
     @abstractmethod
-    def __call__(self,gyros, acces ):
+    def __call__(self, gyros, acces, time ):
         """
         Run INS computer.
 
@@ -47,29 +46,8 @@ class INSComputer(NavSystem):
         accs, array, m/s, incremental velocity
         """
 
-        self._integrate_orientation(gyros)
-        self._integrate_velocity(acces)
-        self._integrate_position()
         return self._state
 
-
-    @abstractmethod
-    def _integrate_orientation(self, inc_angle):
-        """
-        Integrate orientation quaternion matrix.
-        """
-
-    @abstractmethod
-    def _integrate_velocity(self, inc_angle):
-        """
-        Integrate NED acceleration to NED velocity.
-        """
-
-    @abstractmethod
-    def _integrate_position(self):
-        """
-        Integrate velocity in NED frame to position on Earth.
-        """
 
 
     @abstractproperty
@@ -77,6 +55,234 @@ class INSComputer(NavSystem):
         """
         Returns orientation matrix.
         """
+
+
+
+class NewIns(INSComputer):
+    """
+    Next try to implement ins computer.
+    """
+    def __init__(self):
+        """
+        Init data for Simple INS.
+        """
+        super(NewIns, self).__init__()
+
+    @property
+    def state(self):
+        """
+        Returns state of inertial navigation computer.
+
+        Returns
+        -------
+        state: array, float, with next structure
+            [3*position, 3*velocity, 3*acceleration, 4*quaternion]
+        """
+        return self._state
+
+    #@state.setter
+    def set_state(self, state):
+        """
+        Set state of INS computer.
+
+        Parameters
+        ----------
+        state: array, float, with next structure
+            [3*position, 3*velocity, 3*acceleration, 4*quaternion]
+        """
+        assert np.shape(self._state) == np.shape(state),\
+        'wrong length of input parameter'
+        self._state = state
+
+    @property
+    def orientation_dcm(self):
+        """
+        Returns orientation matrix.
+        """
+        return quat2dcm(self.state[9:])
+
+
+    @property
+    def position(self):
+        """
+        Returns position: lat, lon, h.
+        """
+        return self.state[0:3]
+
+
+    @property
+    def velocity(self):
+        """
+        Returns velocity in NED frame.
+        """
+        return self.state[3:6]
+
+    @property
+    def acceleration(self):
+        """
+        Returns acceleration in NED frame.
+        """
+        return self.state[6:9]
+
+
+
+    def dvel(self, inc_vel):
+        """
+        Differential equation for position
+        """
+
+        phi = self.state[0]
+        lam = self.state[1]
+        h = self.state[2]
+
+        vn = self.state[3]
+        ve = self.state[4]
+        vd = self.state[5]
+
+
+        RE, RN = self.datum.curvature(phi)
+
+        wn_en = np.array([ve/(RE + h),
+                          -vn/(RN + h),
+                          -ve*np.tan(phi)/(RE + h)])
+
+        wn_ie = np.array([self.datum.rate*np.cos(phi),
+                          0., - self.datum.rate*np.sin(phi)])
+
+        vp = np.array([vn, ve, vd])
+
+
+        miu = 398600.44 * (10 ** 9)   # m^3/c^2
+        ge = miu / (self.datum.a ** 2)
+
+        # Gravity model
+        g = ge * (1. - 2. * (h / self.datum.a) +\
+                  0.75 * self.datum.e2 * (np.sin(phi) ** 2))
+        gn = np.array([0., 0., g])
+
+        f_ned = np.dot(self.orientation_dcm, inc_vel)
+        # main navigation equation in matrix form
+        dvn = f_ned - np.dot(skew(2.*wn_ie + wn_en), vp) + gn
+
+        return dvn, f_ned
+
+    def dpos(self):
+        """
+        Integrate velocity in NED frame to position on Earth.
+        """
+        phi = self.state[0]
+        lam = self.state[1]
+        h = self.state[2]
+
+        vn = self.state[3]
+        ve = self.state[4]
+        vd = self.state[5]
+
+
+        RE, RN = self.datum.curvature(phi)
+
+        dphi = vn/(RN + h)
+        dlam = ve/((RE + h)*np.cos(phi))
+        dh = -vd
+
+        dpos = np.array([dphi, dlam, dh])
+
+        return dpos[:]
+
+
+    def dquat(self, inc_angle):
+        """
+        Integrate orientation quaternion/matrix.
+
+        Parameters
+        ----------
+        inc_angel: array of float, rad, incremental vector
+        """
+
+
+        phi = self._state[0]
+        lam = self._state[1]
+        h = self._state[2]
+
+        vn = self._state[3]
+        ve = self._state[4]
+        vd = self._state[5]
+
+
+        RE, RN = self.datum.curvature(phi)
+
+        wn_en = np.array([ve/(RE + h),
+                          - vn/(RN + h),
+                          - ve*np.tan(phi)/(RE + h)])
+
+        wn_ie = np.array([self.datum.rate*np.cos(phi),
+                          0.,
+                          - self.datum.rate*np.sin(phi)])
+
+
+        q_n_1 = self._state[9:]
+        wn_in_q = rate2quat(wn_en + wn_ie)
+        wb_ib_q = rate2quat(inc_angle)
+
+        dq = 0.5*quat_mult(q_n_1, wb_ib_q) -\
+             0.5*quat_mult(wn_in_q, q_n_1)
+
+        #        dq = 0.5*quat_mult(wn_in_q, q_n_1)
+
+        #        q = quat_prop(q_n_1, inc_angle - (wn_en + wn_ie)*self.dt)
+
+        return  dq
+
+    def __call__(self, gyros, acces ):
+        """
+        Run INS computer.
+
+        Parameters
+        ----------
+        t: float, sec, time
+        gyros, array, rad, incremental angle
+        accs, array, m/s, incremental velocity
+        """
+        if time ==0.:
+            dpos_k2 = self.dpos()
+            dvel_k2, f = self.dvel(acces)
+            dquat_k2 =self.dquat(gyros)
+            self._state[3:6] = copy.copy(f)
+            yield self._state[:]
+
+        dpos_k1 = self.dpos()
+        dvel_k1, f = self.dvel(acces)
+        dquat_k1 =self.dquat(gyros)
+        self._state[3:6] = copy.copy(f)
+        yield self._state[:]
+
+
+        pos = self._state[0:3] + 2*self.dt*(dpos_k2 + 4*dpos_k1 + dpos_k)/3.
+        v = self._state[3:6] + 2*self.dt*(dvel_k2 + 4*dvel_k1 + dvel_k)/3.
+        q = self._state[12:] + 2*self.dt*(dquat_k2 + 4*dquat_k1 + dquat_k)/3.
+
+        dpos_k2 = copy.copy(dpos_k)
+        dvel_k2 = copy.copy(dvel_k)
+        dquat_k2 = copy.copy(dquat_k)
+        self._state[3:6] = copy.copy(f)
+        self._state = np.concatenate((pos, v, a, q), axis=1)
+        yield self._state[:]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class SimpleINSComputer(INSComputer):
     """
@@ -92,7 +298,7 @@ class SimpleINSComputer(INSComputer):
         self._set_integrators(self.state[0:3], self.state[3:6],
             self.state[9:])
 
-    def __call__(self, gyros, accs):
+    def __call__(self, gyros, accs, time):
         """
         Run INS computer.
 
@@ -122,9 +328,9 @@ class SimpleINSComputer(INSComputer):
         """
         Set initial condition of integrators.
         """
-        self.pos_integrator = SimpsonRule(init_pos)
-        self.vel_integrator = SimpsonRule(init_vel)
-        self.att_integrator = SimpsonRule(init_q)
+        self.pos_integrator = TrapeziumRule(init_pos)
+        self.vel_integrator = TrapeziumRule(init_vel)
+        self.att_integrator = TrapeziumRule(init_q)
 
 
     @property
@@ -299,50 +505,3 @@ class SimpleINSComputer(INSComputer):
         return self.state[6:9]
 
 
-class SimpleINSComputer2(SimpleINSComputer):
-    """
-    Base class for INS computers.
-    """
-    def _integrate_orientation(self, inc_angle):
-        """
-        Integrate orientation quaternion/matrix.
-
-        Parameters
-        ----------
-        inc_angel: array of float, rad, incremental vector
-        """
-
-
-        phi = self._state[0]
-        lam = self._state[1]
-        h = self._state[2]
-
-        vn = self._state[3]
-        ve = self._state[4]
-        vd = self._state[5]
-
-
-        RE, RN = self.datum.curvature(phi)
-
-        wn_en = np.array([ve/(RE + h),
-                          - vn/(RN + h),
-                          - ve*np.tan(phi)/(RE + h)])
-
-        wn_ie = np.array([self.datum.rate*np.cos(phi),
-                          0.,
-                          - self.datum.rate*np.sin(phi)])
-
-
-        q_n_1 = self._state[9:]
-#        wn_in_q = rate2quat(wn_en + wn_ie)
-#        wb_ib_q = rate2quat(inc_angle)
-
-#        dq = 0.5*quat_mult(q_n_1, wb_ib_q) -\
-#             0.5*quat_mult(wn_in_q, q_n_1)
-
-#        dq = 0.5*quat_mult(wn_in_q, q_n_1)
-
-        q = quat_prop(q_n_1, inc_angle - (wn_en + wn_ie)*self.dt)
-
-#        q = self.att_integrator(dq, self.dt)
-        return  q

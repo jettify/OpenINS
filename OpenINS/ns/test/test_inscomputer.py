@@ -10,7 +10,7 @@ import pylab
 from ns.inscomputer import SimpleINSComputer
 from trajectory.navtrajectory import NavTrajectory
 from visualisation.plotter import plot_trinity, plot_trajectory, plot_basic
-from visualisation.plotter import plot_ins_state, plot_compare_states, plot_compare_states_diff
+from visualisation.plotter import plot_ins_state, plot_compare_states, plot_compare_states_diff, plot_compare_quat2euler
 from trajectory.navtrajectory_opt import navtrajectory_state, navtrajectory_statex
 from trajectory.navtrajectory_opt import NavTrajectoryOpt
 
@@ -32,24 +32,25 @@ class ComprehensiveTest(unittest.TestCase):
 
         self.pf = NavTrajectoryOpt()
 #        self.pf = NavTrajectory(pd)
-        self.dt = 0.005
+        self.dt = 0.01
         self.ins = SimpleINSComputer()
         self.ins.dt = self.dt
 
         init_state = self.pf.init_state()
         self.ins.set_state(init_state)
-        self.time = np.arange(0., 1000.,  self.dt)
+        self.time = np.arange(self.dt, 100.,  self.dt)
 
 
 
     def test_position(self):
         """
-        Test position integration of inscomputer.
+        Test position integration pof inscomputer.
 
         We just integrate position, velocity in INS state replaced by ideal 
         one. Other variables in state vector is not changed coz they do not 
         influence on position integration.
         """
+
         self.skipTest('temp')
         test_pos = np.empty
         for t in self.time:
@@ -81,6 +82,7 @@ class ComprehensiveTest(unittest.TestCase):
         Here we integrate only velocity and check acceleration so, position
         and orientation replaced by ideal values.
         """
+
         self.skipTest('temp')
         vel = np.empty
         acc = np.empty
@@ -133,9 +135,11 @@ class ComprehensiveTest(unittest.TestCase):
 
             if t != 0.:
 
+
                 self.ins._state[0:3] = self.pf.position(t)
                 self.ins._state[3:6] = self.pf.velocity_ned(t)
-                q = self.ins._integrate_orientation(self.pf.gyros_inc_angle(t, self.dt))
+#                q = self.ins._integrate_orientation(self.pf.gyros_inc_angle(t, self.dt))
+                q = self.ins._integrate_orientation(self.pf.gyros(t))
                 self.ins._state[9:] = q
                 test_quat = np.vstack((test_quat, q))
 
@@ -150,15 +154,20 @@ class ComprehensiveTest(unittest.TestCase):
         ref_quat = np.array([self.pf.orientation_q(t) for t in self.time])
 
         lgnd = ['q0', 'q1', 'q2', 'q3']
-        plot_compare_states(self.time, test_quat, ref_quat, lgnd)
-        plot_compare_states_diff(self.time, test_quat, ref_quat, lgnd)
 
+
+
+        plot_compare_states(self.time, test_quat[:-1], ref_quat, lgnd)
+        plot_compare_states_diff(self.time, test_quat[:-1], ref_quat, lgnd)
+
+        lgnd = ['roll', 'pitch', 'yaw']
+        plot_compare_quat2euler(self.time, test_quat[:-1], ref_quat, lgnd)
 
     def test_complex_system(self):
         """
         Test full functional system.
         """
-        # self.skipTest('temp')
+        self.skipTest('temp')
         test_state = np.array([self.ins(self.pf.gyros(t), self.pf.accs(t))
                       for t in self.time])
         ref_state = np.array([self.pf.state(t) for t in self.time])

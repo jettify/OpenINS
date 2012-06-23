@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 depsOK = True
 
 try:
@@ -15,6 +16,14 @@ except ImportError:
     print "See http://www.scipy.org/"
 
 try:
+    import sympy
+except ImportError:
+    depsOK = False
+    #TODO: change links
+    print "SciPy should be installed first from suitable binaries."
+    print "See http://www.scipy.org/"
+
+try:
     import matplotlib
 except ImportError:
     depsOK = False
@@ -24,27 +33,30 @@ except ImportError:
 try:
     from setuptools import setup, find_packages
     from setuptools.extension import Extension
+    from Cython.Distutils import build_ext
+
+
+
+
     if depsOK:
         setup(
             name = "openins",
-            version = "0.0",
+            version = "0.001",
             author = "Mykoa Novik",
             license = "MIT",
             url = "http://www.github.com/phen0m/OpenINS",
-            install_requires = ["simpy", "pyparsing"],
-            packages = find_packages(),
-            include_dirs = [numpy.get_include()],
-            ext_modules = [
-                Extension("OpenINS.maths.quaternions",
-                    ['OpenINSS/maths/quaternions.c']),
-                Extension("OpenINS.maths.quat_splines",
-                    ['OpenINS/maths/quat_splines.c']),
-                Extension("OpenINS.maths.vectors",['OpenINS/maths/vectors.c']),
-                Extension("OpenINS.maths.natural_neighbour",[
-                    'OpenINS/maths/natural_neighbour/utils.c',
-                    'OpenINS/maths/natural_neighbour/delaunay.c',
-                    'OpenINS/maths/natural_neighbour/natural.c',
-                    'OpenINS/maths/natural_neighbour.c'])]
-        )
+            #install_requires = ["sympy", "pyparsing"],
+            #packages = find_packages(),
+            cmdclass = {'build_ext': build_ext},
+                ext_modules = [
+            #Extension("OpenINS.trajectory.navtrajectory_opt", ["OpenINS/trajectory/navtrajectory_opt.pyx"]),
+            Extension("OpenINS.trajectory.navtrajectorycf", ["OpenINS/trajectory/navtrajectorycf.pyx"]),
+            Extension("OpenINS.trajectory.navtrajectoryopt2", ["OpenINS/trajectory/navtrajectoryopt2.pyx"]),
+
+
+            Extension("OpenINS.trajectory.volume", ["OpenINS/trajectory/volume.pyx"]),
+            Extension("OpenINS.trajectory.spam", ["OpenINS/trajectory/spam.pyx"]),
+        ])
+
 except ImportError:
     print "Setuptools must be installed - see http://pypi.python.org/pypi/setuptools"

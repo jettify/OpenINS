@@ -21,6 +21,7 @@ class NavTrajectory(BasicTrajectory):
     Frame, sensors output and 3D trajectory will be the same.
     """
 
+
     def __init__(self):
         """
         Init some essential consts.
@@ -99,7 +100,7 @@ class NavTrajectory(BasicTrajectory):
             theta = self._atan2mod(-vd, vr)
             if vn == 0.:
                 theta = 0.
-#            psi = sp.atan(ve/vn)
+            # psi = sp.atan(ve/vn)
             psi = self._atan2mod(ve, vn)
             gamma = kg*(vn*sp.diff(ve,t) -
                         ve*sp.diff(vn,t))/vr*sp.cos(theta)
