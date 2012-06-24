@@ -49,13 +49,9 @@ try:
             #packages = find_packages(),
             cmdclass = {'build_ext': build_ext},
                 ext_modules = [
-            #Extension("OpenINS.trajectory.navtrajectory_opt", ["OpenINS/trajectory/navtrajectory_opt.pyx"]),
-            Extension("OpenINS.trajectory.navtrajectorycf", ["OpenINS/trajectory/navtrajectorycf.pyx"]),
-            Extension("OpenINS.trajectory.navtrajectoryopt2", ["OpenINS/trajectory/navtrajectoryopt2.pyx"]),
-
-
-            Extension("OpenINS.trajectory.volume", ["OpenINS/trajectory/volume.pyx"]),
-            Extension("OpenINS.trajectory.spam", ["OpenINS/trajectory/spam.pyx"]),
+            #Extension("openins.trajectory.navtrajectory_opt", ["openins/trajectory/navtrajectory_opt.c"]),
+            Extension("openins.trajectory.navtrajectory_cf", ["openins/trajectory/navtrajectory_cf.c"]),
+            Extension("openins.trajectory.navtrajectory_opt2", ["openins/trajectory/navtrajectory_opt2.c"]),
         ])
 
 except ImportError:
