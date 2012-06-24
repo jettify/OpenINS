@@ -1,12 +1,12 @@
 import numpy as np
 from abc import ABCMeta, abstractproperty, abstractmethod
 
-from tools.documentation import  copy_method_doc
+from openins.tools.documentation import  copy_method_doc
 
-from orientationmath.orientation import dcm2roll
-from orientationmath.orientation import dcm2pitch
-from orientationmath.orientation import dcm2yaw
-from orientationmath.orientation import euler2dcm
+from openins.orientationmath.orientation import dcm2roll
+from openins.orientationmath.orientation import dcm2pitch
+from openins.orientationmath.orientation import dcm2yaw
+from openins.orientationmath.orientation import euler2dcm
 
 class EarthDatum(object):
     """

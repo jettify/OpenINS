@@ -6,12 +6,12 @@ Tests for integration methods.
 from __future__ import division
 import numpy as np
 import unittest
-import orientationmath.integrators
-from testing.inspection import get_implementations
-from orientationmath.integrators import SimpsonRule
-from orientationmath.integrators import TrapeziumRule
 
-from visualisation.plotter import plot_basic
+import openins.orientationmath.integrators
+from openins.testing.inspection import get_implementations
+from openins.orientationmath.integrators import SimpsonRule
+from openins.orientationmath.integrators import TrapeziumRule
+from openins.visualisation.plotter import plot_basic
 
 x = np.arange(0., 5, 0.0005)
 dt = x[1]-x[0]
@@ -27,8 +27,8 @@ integrals = ( lambda x: 1/2. * x**2,
               lambda x: np.e**x)
 
 
-methods  = get_implementations(orientationmath.integrators,
-                               orientationmath.integrators.Integrator)
+methods  = get_implementations(openins.orientationmath.integrators,
+    openins.orientationmath.integrators.Integrator)
 tols = (0, 4, 4)
 
 def check_integral(method, function, integral):

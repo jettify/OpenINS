@@ -1,6 +1,6 @@
 import numpy as np
 
-from basetrajectory import BasicTrajectory
+from openins.basetrajectory import BasicTrajectory
 
 class FGTrajectory(BasicTrajectory):
     """

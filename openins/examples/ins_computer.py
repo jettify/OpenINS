@@ -1,9 +1,9 @@
 import numpy as np
 
-from ns.inscomputer import SimpleINSComputer
-from visualisation.plotter import plot_compare_states
-from visualisation.plotter import plot_compare_states_diff
-from trajectory.navtrajectory_opt import NavTrajectoryOpt
+from openins.ns.inscomputer import SimpleINSComputer
+from openins.visualisation.plotter import plot_compare_states
+from openins.visualisation.plotter import plot_compare_states_diff
+from openins.trajectory.navtrajectory_opt import NavTrajectoryOpt
 
 # init trajectory of body
 pf = NavTrajectoryOpt()

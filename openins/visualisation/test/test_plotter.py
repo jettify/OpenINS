@@ -5,9 +5,9 @@ Test plotting functions.
 import numpy as np
 import unittest
 
-from visualisation.plotter import *
-from tools.analysis import avar
-from trajectory.navtrajectory import NavTrajectory
+from openins.visualisation.plotter import *
+from openins.tools.analysis import avar
+from openins.trajectory.navtrajectory import NavTrajectory
 
 #@unittest.skip
 class PlotterTest(unittest.TestCase):

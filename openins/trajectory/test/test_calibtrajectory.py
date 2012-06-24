@@ -1,12 +1,12 @@
 import numpy as np
 import unittest
 
-from trajectory.calibtrajectory import RotateIMU
-from trajectory.calibtrajectory import RotationSequence
-from trajectory.calibtrajectory import BasicCalibTraj
-from orientationmath.orientation import euler2dcm
-from orientationmath.orientation import dcm2euler
-from visualisation.plotter import plot_trinity
+from openins.trajectory.calibtrajectory import RotateIMU
+from openins.trajectory.calibtrajectory import RotationSequence
+from openins.trajectory.calibtrajectory import BasicCalibTraj
+from openins.orientationmath.orientation import euler2dcm
+from openins.orientationmath.orientation import dcm2euler
+from openins.visualisation.plotter import plot_trinity
 
 class RotateIMUTest(unittest.TestCase):
     """

@@ -2,9 +2,9 @@ import numpy as np
 import unittest
 
 
-from ns.gnss import SimpleGNSS
-from visualisation.plotter import plot_compare_states, plot_compare_states_diff
-from trajectory.navtrajectory_opt import NavTrajectoryOpt
+from openins.ns.gnss import SimpleGNSS
+from openins.visualisation.plotter import plot_compare_states, plot_compare_states_diff
+from openins.trajectory.navtrajectory_opt import NavTrajectoryOpt
 
 class SimpleGNNSTest(unittest.TestCase):
     """

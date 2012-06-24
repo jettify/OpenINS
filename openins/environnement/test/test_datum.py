@@ -4,8 +4,8 @@
 import unittest
 import numpy as np
 
-from environnement.datum import WGS84
-from environnement.datum import InitPosition
+from openins.environnement.datum import WGS84
+from openins.environnement.datum import InitPosition
 
 
 

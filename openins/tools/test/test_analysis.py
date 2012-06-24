@@ -1,12 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/pythonopenins.
 """
 Functions for analysis of sensors stochastic model.
 """
 
 import unittest
 
-from tools.analysis import *
-from visualisation.plotter import plot_avar
+from openins.tools.analysis import *
+from openins.visualisation.plotter import plot_avar
 
 class AnalysisTest(unittest.TestCase):
 

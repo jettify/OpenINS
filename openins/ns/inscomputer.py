@@ -5,16 +5,16 @@ INS computer implementation.
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
-from environnement.datum import InitPosition
-from ns.navsystem import NavSystem
-from orientationmath.orientation import skew
-from orientationmath.orientation import quat_prop
-from orientationmath.integrators import TrapeziumRule
-from orientationmath.integrators import SimpsonRule
-from environnement.datum import WGS84
-from orientationmath.orientation import quat_mult
-from orientationmath.orientation import quat2dcm
-from orientationmath.orientation import rate2quat
+from openins.environnement.datum import InitPosition
+from openins.ns.navsystem import NavSystem
+from openins.orientationmath.orientation import skew
+from openins.orientationmath.orientation import quat_prop
+from openins.orientationmath.integrators import TrapeziumRule
+from openins.orientationmath.integrators import SimpsonRule
+from openins.environnement.datum import WGS84
+from openins.orientationmath.orientation import quat_mult
+from openins.orientationmath.orientation import quat2dcm
+from openins.orientationmath.orientation import rate2quat
 import copy
 
 class INSComputer(NavSystem):

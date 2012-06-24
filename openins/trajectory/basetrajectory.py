@@ -7,7 +7,7 @@ import numpy as np
 import sympy as sp
 
 
-from environnement.datum import InitPosition
+from openins.environnement.datum import InitPosition
 
 
 class BasicTrajectory(object):

@@ -7,10 +7,10 @@ import numpy as np
 import sympy as sp
 
 
-from environnement.datum import InitPosition
-from trajectory.basetrajectory import BasicTrajectory
-from orientationmath.orientation import euler2dcm
-from orientationmath.orientation import dcm2quat
+from openins.environnement.datum import InitPosition
+from openins.trajectory.basetrajectory import BasicTrajectory
+from openins.orientationmath.orientation import euler2dcm
+from openins.orientationmath.orientation import dcm2quat
 
 class NavTrajectory(BasicTrajectory):
     """

@@ -1,8 +1,8 @@
 import numpy as np
 import unittest
 
-from trajectory.navtrajectory import NavTrajectory
-from visualisation.plotter import plot_trinity, plot_trajectory
+from openins.trajectory.navtrajectory import NavTrajectory
+from openins.visualisation.plotter import plot_trinity, plot_trajectory
 
 class NavTrajectoryTest(unittest.TestCase):
     """

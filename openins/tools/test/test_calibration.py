@@ -1,11 +1,11 @@
 import unittest
 import numpy as np
 
-from trajectory.calibtrajectory import RotationSequence
-from trajectory.calibtrajectory import BasicCalibTraj
-from trajectory.calibtrajectory import RotateIMU
-from visualisation.plotter import plot_trinity
-from tools.calibration import DieselCalibrator
+from openins.trajectory.calibtrajectory import RotationSequence
+from openins.trajectory.calibtrajectory import BasicCalibTraj
+from openins.trajectory.calibtrajectory import RotateIMU
+from openins.visualisation.plotter import plot_trinity
+from openins.tools.calibration import DieselCalibrator
 
 
 class TestDieselCalibrator(unittest.TestCase):

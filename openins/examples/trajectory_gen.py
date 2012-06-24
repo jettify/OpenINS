@@ -1,7 +1,7 @@
 import numpy as np
 
-from trajectory.navtrajectory_opt import NavTrajectoryOpt
-from visualisation.plotter import plot_state_vector
+from openins.trajectory.navtrajectory_opt import NavTrajectoryOpt
+from openins.visualisation.plotter import plot_state_vector
 
 # init profile generator
 pf = NavTrajectoryOpt()

@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
-from environnement.datum import WGS84
+from openins.environnement.datum import WGS84
 
 class NavSystem(object):
     """

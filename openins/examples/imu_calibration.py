@@ -1,6 +1,6 @@
 import numpy as np
 
-from tools.calibration import DieselCalibrator
+from openins.tools.calibration import DieselCalibrator
 
 
 if __name__ == '__main__':

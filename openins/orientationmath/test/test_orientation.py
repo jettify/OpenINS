@@ -6,7 +6,7 @@ import numpy as np
 import unittest
 from numpy import pi
 
-from orientationmath.orientation import  *
+from openins.orientationmath.orientation import  *
 
 
 # SET OF REFERENCE CONTSTS

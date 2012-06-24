@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 
-from trajectory.navtrajectory_opt2 import NavTrajectoryOpt
-from trajectory.navtrajectory import NavTrajectory
-from visualisation.plotter import plot_compare_states_diff, plot_compare_states
+from openins.trajectory.navtrajectory_opt2 import NavTrajectoryOpt
+from openins.trajectory.navtrajectory import NavTrajectory
+from openins.visualisation.plotter import plot_compare_states_diff, plot_compare_states
 
 
 
@@ -54,3 +54,7 @@ class NavTrajectoryOptTest(unittest.TestCase):
         plot_compare_states_diff(self.time, test_accs, ref_accs, lgnd)
 
         np.testing.assert_almost_equal(test_accs, ref_accs, decimal=10)
+
+
+if __name__ == '__main__':
+    unittest.main()

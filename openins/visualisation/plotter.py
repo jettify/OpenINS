@@ -8,8 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import time as timelib
 import numpy as np
-from orientationmath.orientation import quat2dcm
-from orientationmath.orientation import dcm2euler
+from openins.orientationmath.orientation import quat2dcm
+from openins.orientationmath.orientation import dcm2euler
 
 def plot_avar(time, sigma):
     """

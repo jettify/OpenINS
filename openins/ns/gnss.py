@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 import numpy as np
 
-from environnement.datum import WGS84
-from ns.navsystem import NavSystem
+from openins.environnement.datum import WGS84
+from openins.ns.navsystem import NavSystem
 
 class GNSS(NavSystem):
     """

@@ -9,12 +9,11 @@ from abc import ABCMeta, abstractproperty, abstractmethod
 import numpy as np
 
 
-from environnement.datum import InitPosition
-from orientationmath.orientation import quat_prop_4o, quat2dcm, euler2quat, dcm2euler
-from orientationmath.orientation import quat_prop
-from visualisation.plotter import plot_trinity
-
-from tools.profile import create_profile
+from openins.environnement.datum import InitPosition
+from openins.orientationmath.orientation import quat_prop_4o, quat2dcm, euler2quat, dcm2euler
+from openins.orientationmath.orientation import quat_prop
+from openins.visualisation.plotter import plot_trinity
+from openins.tools.profile import create_profile
 
 
 class IMUCalibration(object):

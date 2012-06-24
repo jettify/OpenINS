@@ -1,12 +1,12 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 
-from environnement.datum import InitPosition
-from trajectory.basetrajectory import BasicTrajectory
-from orientationmath.orientation import euler2dcm
-from orientationmath.orientation import dcm2euler
-from orientationmath.orientation import euler2quat
-from orientationmath.orientation import quat2dcm
+from openins.environnement.datum import InitPosition
+from openins.trajectory.basetrajectory import BasicTrajectory
+from openins.orientationmath.orientation import euler2dcm
+from openins.orientationmath.orientation import dcm2euler
+from openins.orientationmath.orientation import euler2quat
+from openins.orientationmath.orientation import quat2dcm
 
 class CalibTrajectory(BasicTrajectory):
     """

@@ -7,17 +7,17 @@ import pylab
 
 
 
-from ns.inscomputer import SimpleINSComputer
-from trajectory.navtrajectory import NavTrajectory
-from visualisation.plotter import plot_trinity, plot_trajectory, plot_basic
-from visualisation.plotter import plot_ins_state, plot_compare_states, plot_compare_states_diff
-from trajectory.navtrajectory_opt import navtrajectory_state, navtrajectory_statex
-from trajectory.navtrajectory_opt import NavTrajectoryOpt
+from openins.ns.inscomputer import SimpleINSComputer
+from openins.trajectory.navtrajectory import NavTrajectory
+from openins.visualisation.plotter import plot_trinity, plot_trajectory, plot_basic
+from openins.visualisation.plotter import plot_ins_state, plot_compare_states, plot_compare_states_diff
+from openins.trajectory.navtrajectory_opt import navtrajectory_state, navtrajectory_statex
+from openins.trajectory.navtrajectory_opt import NavTrajectoryOpt
 
-from orientationmath.orientation import euler2quat
-from orientationmath.orientation import dcm2quat
-from orientationmath.orientation import quat2dcm
-from orientationmath.orientation import dcm2euler
+from openins.orientationmath.orientation import euler2quat
+from openins.orientationmath.orientation import dcm2quat
+from openins.orientationmath.orientation import quat2dcm
+from openins.orientationmath.orientation import dcm2euler
 
 
 class ComprehensiveTest(unittest.TestCase):

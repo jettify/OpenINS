@@ -4,8 +4,8 @@ Function to create set of turns for platform.
 
 import numpy as np
 import pylab
-from visualisation.plotter import plot_trinity
-from orientationmath.orientation import euler2quat
+from openins.visualisation.plotter import plot_trinity
+from openins.orientationmath.orientation import euler2quat
 
 def create_profile(dtime, pfl, init):
     """
