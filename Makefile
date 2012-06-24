@@ -2,8 +2,8 @@
 #
 
 .PHONY: default clean all
-APP=OpenINS
-PWD=$(shell pwd)/$(APP)
+APP=openins
+PWD=$(shell pwd)
 
 
 #export PYTHONPATH:=$(PWD):${PYTHONPATH}
@@ -43,6 +43,9 @@ clean:
 	find . -type f -name "*.so" -exec rm -r -v {} \;
 	@rm -rf -v build
 	#find . -type f -name "*.pyc" -exec rm -r -v {} \;
+
+clean_c:
+	find . -type f -name "*.c" -exec rm -r -v {} \;
 
 
 
