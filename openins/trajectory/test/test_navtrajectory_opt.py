@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from openins.trajectory.navtrajectory_opt2 import NavTrajectoryOpt
+from openins.trajectory.navtrajectory_opt import NavTrajectoryOpt
 from openins.trajectory.navtrajectory import NavTrajectory
 from openins.visualisation.plotter import plot_compare_states_diff, plot_compare_states
 
