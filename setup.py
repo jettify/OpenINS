@@ -36,8 +36,6 @@ try:
     from Cython.Distutils import build_ext
 
 
-
-
     if depsOK:
         setup(
             name = "openins",
@@ -45,13 +43,14 @@ try:
             author = "Mykoa Novik",
             license = "MIT",
             url = "http://www.github.com/phen0m/OpenINS",
-            #install_requires = ["sympy", "pyparsing"],
-            #packages = find_packages(),
+            install_requires = ["sympy", "pyparsing"],
+            packages = find_packages(),
             cmdclass = {'build_ext': build_ext},
                 ext_modules = [
-            #Extension("openins.trajectory.navtrajectory_opt", ["openins/trajectory/navtrajectory_opt.c"]),
             Extension("openins.trajectory.navtrajectory_cf", ["openins/trajectory/navtrajectory_cf.c"]),
-            Extension("openins.trajectory.navtrajectory_opt2", ["openins/trajectory/navtrajectory_opt2.c"]),
+            Extension("openins.trajectory.navtrajectory_opt", ["openins/trajectory/navtrajectory_opt.c"]),
+            Extension("openins.trajectory.maneuver", ["openins/trajectory/maneuver.c"]),
+
         ])
 
 except ImportError:
