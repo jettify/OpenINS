@@ -23,7 +23,7 @@ class GNSS(NavSystem):
         # initial quaternion
 
     @abstractmethod
-    def __call__(self,gyros, acces ):
+    def __call__(self ):
         """
         Run INS computer.
 
